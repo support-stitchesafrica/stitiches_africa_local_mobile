@@ -1,0 +1,162 @@
+[
+  {
+    "title": "Men's Slim Fit Shirt",
+    "category": "Men",
+    "subcategory": "Shirts",
+    "price": 8500,
+    "condition": "New",
+    "image": "images/product1.png"
+  },
+  {
+    "title": "Women's Handbag",
+    "category": "Women",
+    "subcategory": "Bags",
+    "price": 15000,
+    "condition": "Used",
+    "image": "images/product2.png"
+  },
+  {
+    "title": "Kids Sneakers",
+    "category": "Kids",
+    "subcategory": "Shoes",
+    "price": 7000,
+    "condition": "New",
+    "image": "images/product3.png"
+  },
+  {
+    "title": "Men's Leather Jacket",
+    "category": "Men",
+    "subcategory": "Jackets",
+    "price": 25000,
+    "condition": "New",
+    "image": "images/product4.png"
+  },
+  {
+    "title": "Women's Evening Dress",
+    "category": "Women",
+    "subcategory": "Dresses",
+    "price": 28000,
+    "condition": "New",
+    "image": "images/product16.png"
+  },
+  {
+    "title": "Kids School Backpack",
+    "category": "Kids",
+    "subcategory": "Bags",
+    "price": 5000,
+    "condition": "Used",
+    "image": "images/product6.png"
+  },
+  {
+    "title": "Men's Casual Sneakers",
+    "category": "Men",
+    "subcategory": "Shoes",
+    "price": 12000,
+    "condition": "Used",
+    "image": "images/product7.png"
+  },
+  {
+    "title": "Women's Sunglasses",
+    "category": "Accessories",
+    "subcategory": "Glasses",
+    "price": 6000,
+    "condition": "New",
+    "image": "images/product14.png"
+  },
+  {
+    "title": "Men's Formal Suit",
+    "category": "Men",
+    "subcategory": "Suits",
+    "price": 40000,
+    "condition": "New",
+    "image": "images/product9.png"
+  },
+  {
+    "title": "Women's Casual Sandals",
+    "category": "Women",
+    "subcategory": "Shoes",
+    "price": 10000,
+    "condition": "Used",
+    "image": "images/product10.png"
+  },
+  {
+    "title": "Kids Winter Jacket",
+    "category": "Kids",
+    "subcategory": "Jackets",
+    "price": 13000,
+    "condition": "New",
+    "image": "images/product11.png"
+  },
+  {
+    "title": "Men's Baseball Cap",
+    "category": "Accessories",
+    "subcategory": "Hats",
+    "price": 4500,
+    "condition": "New",
+    "image": "images/product12.png"
+  },
+  {
+    "title": "Women's Wallet",
+    "category": "Women",
+    "subcategory": "Accessories",
+    "price": 7000,
+    "condition": "New",
+    "image": "images/product13.png"
+  },
+  {
+    "title": "Kids T-shirt Pack",
+    "category": "Kids",
+    "subcategory": "Shirts",
+    "price": 6500,
+    "condition": "Used",
+    "image": "images/product14.png"
+  },
+  {
+    "title": "Men's Wrist Watch",
+    "category": "Accessories",
+    "subcategory": "Watches",
+    "price": 22000,
+    "condition": "Used",
+    "image": "images/product15.png"
+  },
+  {
+    "title": "Women's Necklace Set",
+    "category": "Accessories",
+    "subcategory": "Jewelry",
+    "price": 18000,
+    "condition": "New",
+    "image": "images/product16.png"
+  },
+  {
+    "title": "Kids Party Dress",
+    "category": "Kids",
+    "subcategory": "Dresses",
+    "price": 12000,
+    "condition": "New",
+    "image": "images/product17.png"
+  },
+  {
+    "title": "Men's Polo Shirt",
+    "category": "Men",
+    "subcategory": "Shirts",
+    "price": 9000,
+    "condition": "Used",
+    "image": "images/product18.png"
+  },
+  {
+    "title": "Women's High Heels",
+    "category": "Women",
+    "subcategory": "Shoes",
+    "price": 20000,
+    "condition": "New",
+    "image": "images/product11.png"
+  },
+  {
+    "title": "Men's Travel Bag",
+    "category": "Accessories",
+    "subcategory": "Bags",
+    "price": 27000,
+    "condition": "New",
+    "image": "images/product10.png"
+  }
+]
