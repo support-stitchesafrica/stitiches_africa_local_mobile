@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import 'services/category_service.dart';
+
 class SellFormScreen extends StatefulWidget {
   const SellFormScreen({super.key});
 
@@ -11,6 +13,10 @@ class SellFormScreen extends StatefulWidget {
 
 class _SellFormScreenState extends State<SellFormScreen> {
   int _currentStep = 0;
+  final CategoryService _categoryService = CategoryService();
+  List<Map<String, dynamic>> _categories = [];
+  bool _isLoading = false;
+  String? error;
 
   // Step 1 values
   String? _selectedCategory;
