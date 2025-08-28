@@ -1,10 +1,17 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/category_service.dart';
+import 'services/ad_service.dart';
+import 'models/ad.dart';
+import 'package:nigerian_states_and_lga/nigerian_states_and_lga.dart';
+import 'package:pay_with_paystack/pay_with_paystack.dart';
 
 class SellFormScreen extends StatefulWidget {
   const SellFormScreen({super.key});
@@ -14,7 +21,24 @@ class SellFormScreen extends StatefulWidget {
 }
 
 class _SellFormScreenState extends State<SellFormScreen> {
+
+
+// ✅ Paystack public key
+  final String paystackPublicKey = "pk_test_37eba43300c473e8c80690177c32daf9302f82e6"; // replace with your key
+
+  // Map promoType → amount in Kobo
+  final Map<String, int> paystackPlans = {
+    "TOP": 1199900, // ₦11,999 → in Kobo
+    "Exclusive": 1999900, // ₦19,999
+    "Boost": 2999900, // ₦29,999
+  };
   int _currentStep = 0;
+
+  // dropdown data
+  List<String> stateList = [];
+  List<String> areaList = [];
+  String? _selectedState;
+  String? _selectedArea;
 
   List<Map<String, dynamic>> categoryData = [];
   bool isLoadingCategories = true;
@@ -22,11 +46,9 @@ class _SellFormScreenState extends State<SellFormScreen> {
   // User selections
   String? selectedCategory;
   String? selectedSubcategory;
+
   // Step 1 values
-  String? _selectedCategory;
-  String? _selectedSubCategory;
-  String? _selectedState;
-  String? _selectedArea;
+
   final ImagePicker _picker = ImagePicker();
   List<File> _selectedImages = [];
 
@@ -56,17 +78,6 @@ class _SellFormScreenState extends State<SellFormScreen> {
 
   // Promo selection
   String? _selectedPromo; // "No promo", "TOP", "Boost Premium promo"
-
-  // Dummy data
-  final Map<String, List<String>> categories = {
-    "Fragrances": ["Perfume", "Cologne", "Body Mist"],
-    "Electronics": ["Phones", "Laptops", "Accessories"],
-  };
-
-  final Map<String, List<String>> states = {
-    "Lagos": ["Ikeja", "Surulere", "Lekki"],
-    "Abuja": ["Garki", "Wuse", "Maitama"],
-  };
 
   Future<void> _fetchCategories() async {
     try {
@@ -155,7 +166,7 @@ class _SellFormScreenState extends State<SellFormScreen> {
   Future<void> _pickImages() async {
     try {
       final List<XFile>? pickedFiles = await _picker.pickMultiImage(
-        imageQuality: 80, // compress a bit for performance
+        imageQuality: 80,
       );
 
       if (pickedFiles != null && pickedFiles.isNotEmpty) {
@@ -169,10 +180,8 @@ class _SellFormScreenState extends State<SellFormScreen> {
   }
 
   bool _isStep1Valid() {
-    return _selectedCategory != null &&
-        _selectedSubCategory != null &&
-        _selectedState != null &&
-        _selectedArea != null &&
+    return selectedCategory != null &&
+        selectedSubcategory != null &&
         _selectedImages.isNotEmpty;
   }
 
@@ -180,29 +189,122 @@ class _SellFormScreenState extends State<SellFormScreen> {
     return _titleController.text.isNotEmpty &&
         _brandController.text.isNotEmpty &&
         _genderController.text.isNotEmpty &&
-        _collectionController.text.isNotEmpty &&
-        _scentController.text.isNotEmpty &&
-        _formulationController.text.isNotEmpty &&
         _descriptionController.text.isNotEmpty &&
         _priceController.text.isNotEmpty &&
-        _phoneController.text.isNotEmpty;
+        _phoneController.text.isNotEmpty &&
+        _selectedState != null &&
+        _selectedArea != null &&
+        _selectedImages.isNotEmpty;
   }
 
-  void _nextStep() {
-    if (_currentStep == 0 && _isStep1Valid()) {
-      setState(() => _currentStep = 1);
-    } else if (_currentStep == 1 && _isStep2Valid()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            "Ad posted successfully with promo: ${_selectedPromo ?? 'No promo'}",
-          ),
-        ),
-      );
-      Navigator.pushNamed(context, "/home");
+  String _mapPromoToEnum(String? promo) {
+    switch (promo) {
+      case "TOP":
+        return "TOP";
+      case "Exclusive (14 days)":
+        return "Exclusive";
+      case "Boost (30 days)":
+        return "Boost";
+      default:
+        return "NONE";
     }
   }
 
+ Future<void> _saveAd(String userId, String promoType) async {
+    final ad = Ad(
+      id: "",
+      userId: userId,
+      category: selectedCategory!,
+      subCategory: selectedSubcategory!,
+      state: _selectedState!,
+      area: _selectedArea!,
+      images: _selectedImages.map((f) => f.path).toList(),
+      title: _titleController.text,
+      brand: _brandController.text,
+      gender: _genderController.text,
+      collection: _collectionController.text,
+      scent: _scentController.text,
+      formulation: _formulationController.text,
+      volume: _volumeController.text,
+      description: _descriptionController.text,
+      price: double.tryParse(_priceController.text) ?? 0.0,
+      phone: _phoneController.text,
+      latitude: latitude != null ? double.tryParse(latitude!) : null,
+      longitude: longitude != null ? double.tryParse(longitude!) : null,
+      address: address ?? "",
+      createdAt: DateTime.now(),
+      promoType: promoType,
+    );
+
+    final adService = AdService(
+      baseUrl: "https://stictches-africa-api-local.vercel.app/api",
+    );
+    await adService.createAd(ad);
+  }
+
+Future<void> _nextStep() async {
+  if (_currentStep == 0 && _isStep1Valid()) {
+    setState(() => _currentStep = 1);
+  } else if (_currentStep == 1 && _isStep2Valid()) {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString("user");
+      if (userJson == null) throw Exception("No logged in user found");
+
+      final userMap = jsonDecode(userJson) as Map<String, dynamic>;
+      final userId = userMap["id"] as String;
+      final email = userMap["email"] as String;
+
+      final promoType = _mapPromoToEnum(_selectedPromo);
+
+      if (promoType == "NONE") {
+        // 🚀 Free plan → Save directly
+        await _saveAd(userId, promoType);
+      } else {
+        // 💳 Paid plan → Checkout with Paystack
+        final amount = paystackPlans[promoType];
+        if (amount == null) throw Exception("Invalid plan selected");
+
+        PayWithPayStack().now(
+          context: context,
+          secretKey: paystackPublicKey, // ⚠️ should be PUBLIC KEY for client-side
+          customerEmail: email,
+          reference: DateTime.now().millisecondsSinceEpoch.toString(),
+          amount: amount.toDouble(), // in Kobo
+          currency: "NGN",
+          callbackUrl: "https://stictches-africa-api-local.vercel.app/api/paystack/callback", // ✅ REQUIRED
+          transactionCompleted: (response) async {
+            if (response.status == true) {
+              await _saveAd(userId, promoType);
+
+              if (!mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Payment successful, Ad posted!")),
+              );
+              Navigator.pushNamed(context, "/home");
+            } else {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Payment failed: ${response.message}")),
+              );
+            }
+          },
+          transactionNotCompleted: (error) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Transaction cancelled: $error")),
+            );
+          },
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error: $e")),
+      );
+    }
+  }
+}
+ 
+  
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -241,46 +343,49 @@ class _SellFormScreenState extends State<SellFormScreen> {
   }
 
   Widget _step1() {
+    List<String> categoryList = categoryData
+        .map((c) => c["category"] as String)
+        .toList();
+    List<String> subcategoriesForSelected = selectedCategory != null
+        ? categoryData
+              .firstWhere(
+                (c) => c["category"] == selectedCategory,
+              )["subcategories"]
+              .cast<String>()
+        : [];
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _label("Category*"),
           DropdownButtonFormField<String>(
-            value: _selectedCategory,
-            items: categories.keys
-                .map<DropdownMenuItem<String>>(
-                  (cat) =>
-                      DropdownMenuItem<String>(value: cat, child: Text(cat)),
-                )
+            decoration: const InputDecoration(
+              labelText: "Category",
+              border: OutlineInputBorder(),
+            ),
+            items: categoryList
+                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                 .toList(),
+            value: selectedCategory,
             onChanged: (val) {
               setState(() {
-                _selectedCategory = val;
-                _selectedSubCategory = null; // Reset subcategory
+                selectedCategory = val;
+                selectedSubcategory = null;
               });
             },
-            decoration: _inputDecoration(),
           ),
-          const SizedBox(height: 16),
-          _label("Subcategory*"),
+          const SizedBox(height: 12),
           DropdownButtonFormField<String>(
-            value: _selectedSubCategory,
-            items:
-                (_selectedCategory != null
-                        ? categories[_selectedCategory]!
-                        : [])
-                    .map<DropdownMenuItem<String>>(
-                      (sub) => DropdownMenuItem<String>(
-                        value: sub,
-                        child: Text(sub),
-                      ),
-                    )
-                    .toList(),
-            onChanged: (val) => setState(() => _selectedSubCategory = val),
-            decoration: _inputDecoration(),
+            decoration: const InputDecoration(
+              labelText: "Subcategory",
+              border: OutlineInputBorder(),
+            ),
+            items: subcategoriesForSelected
+                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
+                .toList(),
+            value: selectedSubcategory,
+            onChanged: (val) => setState(() => selectedSubcategory = val),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           TextField(
             controller: locationController,
             readOnly: true,
@@ -298,7 +403,6 @@ class _SellFormScreenState extends State<SellFormScreen> {
                     ),
             ),
           ),
-
           const SizedBox(height: 16),
           _label("Add Photos*"),
           InkWell(
@@ -319,11 +423,6 @@ class _SellFormScreenState extends State<SellFormScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            "First image will be used as title image",
-            style: TextStyle(fontSize: 12, color: Colors.grey),
-          ),
-          const SizedBox(height: 10),
           if (_selectedImages.isNotEmpty)
             SizedBox(
               height: 100,
@@ -374,77 +473,114 @@ class _SellFormScreenState extends State<SellFormScreen> {
     );
   }
 
-  Widget _step2() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _label("Title*"),
-          _inputField(_titleController),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _inputField(_genderController, hint: "Gender*")),
-              const SizedBox(width: 12),
-              Expanded(child: _inputField(_brandController, hint: "Brand*")),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _inputField(_collectionController, hint: "Collection"),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _inputField(
-                  _scentController,
-                  hint: "Perfume Type/Scent",
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _inputField(_formulationController, hint: "Formulation"),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _inputField(_volumeController, hint: "Volume (ml)"),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _label("Description*"),
-          _inputField(_descriptionController, maxLines: 3),
-          const SizedBox(height: 12),
-          _label("Price*"),
-          _inputField(_priceController),
-          const SizedBox(height: 12),
-          _label("Your phone number*"),
-          _inputField(_phoneController),
+ Widget _step2() {
+  return SingleChildScrollView(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label("Title*"),
+        _inputField(_titleController),
+        const SizedBox(height: 12),
 
-          const SizedBox(height: 20),
-          _label("Promote your ad"),
-          const SizedBox(height: 10),
-          _promoOptions(),
-        ],
-      ),
-    );
-  }
+        Row(
+          children: [
+            Expanded(child: _inputField(_genderController, hint: "Gender*")),
+            const SizedBox(width: 12),
+            Expanded(child: _inputField(_brandController, hint: "Brand*")),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        Row(
+          children: [
+            Expanded(
+              child: _inputField(_collectionController, hint: "Collection"),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _inputField(
+                _scentController,
+                hint: "Perfume Type/Scent",
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // ✅ Fixed: State Dropdown
+        _label("State*"),
+        DropdownButtonFormField<String>(
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+          items: NigerianStatesAndLGA.allStates
+              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+              .toList(),
+          value: _selectedState,
+          onChanged: (val) {
+            setState(() {
+              _selectedState = val;
+              _selectedArea = null;
+              areaList = val != null
+                  ? NigerianStatesAndLGA.getStateLGAs(val) // ✅ correct method
+                  : [];
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+
+        _label("Area (LGA)*"),
+        DropdownButtonFormField<String>(
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+          items: areaList
+              .map((a) => DropdownMenuItem(value: a, child: Text(a)))
+              .toList(),
+          value: _selectedArea,
+          onChanged: (val) => setState(() => _selectedArea = val),
+        ),
+        const SizedBox(height: 12),
+
+        Row(
+          children: [
+            Expanded(
+              child: _inputField(_formulationController, hint: "Formulation"),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _inputField(_volumeController, hint: "Volume (ml)"),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        _label("Description*"),
+        _inputField(_descriptionController, maxLines: 3),
+        const SizedBox(height: 12),
+
+        _label("Price*"),
+        _inputField(_priceController),
+        const SizedBox(height: 12),
+
+        _label("Your phone number*"),
+        _inputField(_phoneController),
+        const SizedBox(height: 20),
+
+        _label("Promote your Brand"),
+        const SizedBox(height: 10),
+        _promoOptions(),
+      ],
+    ),
+  );
+}
 
   Widget _promoOptions() {
     return Column(
       children: [
-        _promoCard("No promo", "free"),
+        _promoCard("No promo", "Free"),
         const SizedBox(height: 10),
         _promoCard("TOP", "₦ 11,999", subtitle: "7 days"),
         const SizedBox(height: 10),
-        _promoCard("Boost Premium promo", "₦ 19,999", subtitle: "14 days"),
+        _promoCard("Exclusive (14 days)", "₦ 19,999"),
         const SizedBox(height: 10),
-        _promoCard("Boost Premium promo", "₦ 29,999", subtitle: "30 days"),
+        _promoCard("Boost (30 days)", "₦ 29,999"),
       ],
     );
   }

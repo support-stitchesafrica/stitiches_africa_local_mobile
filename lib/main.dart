@@ -3,27 +3,35 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'controllers/auth_controller.dart'; // ✅ use ONE consistent import style
+// ✅ Correct import for pay_with_paystack
+import 'package:pay_with_paystack/pay_with_paystack.dart';
+
+import 'controllers/auth_controller.dart';
 import 'fashion_page.dart';
 import 'login_screen.dart';
 import 'register_screen.dart';
 import 'sell_ad.dart';
 import 'splash_screen.dart';
 
+// ✅ Add your Paystack public key here
+const String paystackPublicKey = "pk_test_37eba43300c473e8c80690177c32daf9302f82e6";
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   final prefs = await SharedPreferences.getInstance();
   final token = prefs.getString('token');
-  final initialRoute = (token != null && token.isNotEmpty) ? '/home' : '/splash';
+  final initialRoute =
+      (token != null && token.isNotEmpty) ? '/home' : '/splash';
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider<AuthController>(
-          create: (_) => AuthController(), // ✅ provide it here
+          create: (_) => AuthController(),
         ),
       ],
-      child: StitchesAfricaApp(initialRoute: initialRoute), // ✅ MaterialApp is BELOW providers
+      child: StitchesAfricaApp(initialRoute: initialRoute),
     ),
   );
 }

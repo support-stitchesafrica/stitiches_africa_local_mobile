@@ -43,6 +43,7 @@ class Ad {
   final String? formulation;
   final String? volume;
   final String description;
+  final String? promoType;
   final double price;
   final String phone;
   final double? latitude;
@@ -62,6 +63,7 @@ class Ad {
     required this.images,
     required this.title,
     required this.brand,
+    this.promoType,
     this.gender,
     this.collection,
     this.scent,
@@ -99,6 +101,7 @@ class Ad {
         latitude: json['latitude']?.toDouble(),
         longitude: json['longitude']?.toDouble(),
         address: json['address'],
+        promoType: json['promoType'],
         createdAt: DateTime.parse(json['createdAt']),
         condition: json['condition'], // ✅ Parse from API
         user: json['user'] != null ? User.fromJson(json['user']) : null,
@@ -125,6 +128,7 @@ class Ad {
         "latitude": latitude,
         "longitude": longitude,
         "address": address,
+        "promoType": promoType,
         "createdAt": createdAt.toIso8601String(),
         "condition": condition, // ✅ Include in JSON
         "user": user?.toJson(),

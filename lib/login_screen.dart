@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stitches_africa_local/home_page.dart';
@@ -43,6 +45,7 @@ class _LoginScreenState extends State<LoginScreen> {
         // ✅ Save to local storage
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString("token", authController.token!);
+        await prefs.setString("user", jsonEncode(authController.user));
 
         // You can also save user data if returned from API
         // await prefs.setString("user", jsonEncode(authController.user));
