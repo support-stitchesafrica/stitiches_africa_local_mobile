@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:stitches_africa_local/fashion_page.dart';
 import 'package:stitches_africa_local/home_page.dart';
 import '../controllers/auth_controller.dart';
 import 'register_screen.dart';
@@ -56,7 +57,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(builder: (_) => const HomePage()),
+          MaterialPageRoute(builder: (_) => const FashionPage()),
         );
       } else if (authController.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(

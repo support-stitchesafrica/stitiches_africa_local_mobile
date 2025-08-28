@@ -3,6 +3,7 @@ import '../services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'dart:convert';
 
 class AuthController with ChangeNotifier {
   final AuthService _authService = AuthService();
@@ -48,7 +49,10 @@ class AuthController with ChangeNotifier {
     longitude = position.longitude;
 
     // Reverse geocode to get readable address
-    List<Placemark> placemarks = await placemarkFromCoordinates(latitude!, longitude!);
+    List<Placemark> placemarks = await placemarkFromCoordinates(
+      latitude!,
+      longitude!,
+    );
     if (placemarks.isNotEmpty) {
       Placemark place = placemarks.first;
       address = "${place.locality}, ${place.country}";
@@ -130,7 +134,7 @@ class AuthController with ChangeNotifier {
       // Save token, user, and location to SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', token ?? '');
-      await prefs.setString('user', user != null ? user.toString() : '');
+      await prefs.setString('user', user != null ? jsonEncode(user) : '');
       if (latitude != null && longitude != null) {
         await prefs.setDouble('latitude', latitude!);
         await prefs.setDouble('longitude', longitude!);
@@ -140,7 +144,6 @@ class AuthController with ChangeNotifier {
       print('Login successful: $result');
       print('Saved token: $token');
       print('User Location: $latitude, $longitude ($address)');
-
     } catch (e) {
       error = e.toString();
       print('Login error: $error');

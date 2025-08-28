@@ -32,25 +32,59 @@ class User {
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
+    // Helper function to convert data to List<String>
+    List<String>? parseStringList(dynamic data) {
+      if (data == null) return null;
+      if (data is List) {
+        return data.map((item) => item.toString()).toList();
+      }
+      if (data is String) {
+        if (data.isEmpty) return null;
+        return data.split(',').map((item) => item.trim()).toList();
+      }
+      return null;
+    }
+
     return User(
-      id: json["id"],
-      fullName: json["fullName"] ?? "",
-      email: json["email"] ?? "",
-      dob: json["dob"],
-      gender: json["gender"],
-      image: json['image'],
-      category: json["category"] != null
-          ? List<String>.from(json["category"])
+      id: json["id"]?.toString() ?? "",
+      fullName: json["fullName"]?.toString() ?? "",
+      email: json["email"]?.toString() ?? "",
+      dob: json["dob"]?.toString(),
+      gender: json["gender"]?.toString(),
+      image: json['image']?.toString(),
+      category: parseStringList(json["category"]),
+      style: parseStringList(json["style"]),
+      priceRange: json["priceRange"]?.toString(),
+      shoppingPreference: json["shoppingPreference"]?.toString(),
+      latitude: json["latitude"] != null
+          ? double.tryParse(json["latitude"].toString())
           : null,
-      style: json["style"] != null
-          ? List<String>.from(json["style"])
+      longitude: json["longitude"] != null
+          ? double.tryParse(json["longitude"].toString())
           : null,
-      priceRange: json["priceRange"],
-      shoppingPreference: json["shoppingPreference"],
-      latitude: json["latitude"]?.toDouble(),
-      longitude: json["longitude"]?.toDouble(),
-      radius: json["radius"]?.toDouble(),
-      address: json["address"],
+      radius: json["radius"] != null
+          ? double.tryParse(json["radius"].toString())
+          : null,
+      address: json["address"]?.toString(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      "id": id,
+      "fullName": fullName,
+      "email": email,
+      "dob": dob,
+      "gender": gender,
+      "image": image,
+      "category": category,
+      "style": style,
+      "priceRange": priceRange,
+      "shoppingPreference": shoppingPreference,
+      "latitude": latitude,
+      "longitude": longitude,
+      "radius": radius,
+      "address": address,
+    };
   }
 }

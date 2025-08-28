@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:stitches_africa_local/profile_page.dart';
 import 'package:stitches_africa_local/register_screen.dart';
 import 'package:stitches_africa_local/featured_screen.dart';
 import 'package:stitches_africa_local/product_page.dart';
+import 'package:stitches_africa_local/utils/prefs.dart';
 import 'home_page.dart'; // Import HomePage from its own file
 
 class FashionPage extends StatefulWidget {
@@ -12,37 +14,32 @@ class FashionPage extends StatefulWidget {
 }
 
 class _FashionPageState extends State<FashionPage> {
+  final t = Prefs.token;
+  String get profileOrSignIn {
+    if (t == null || t!.isEmpty) {
+      return "Sign in";
+    } else {
+      return "Profile";
+    }
+  }
+
   int _currentIndex = 0;
 
   final List<Widget> _pages = [
     const HomePage(),
     const FeaturedAdsPage(),
     const ProductPage(),
-    const SizedBox(), // Placeholder for Sign In bottom sheet
+    ProfilePage(), // Placeholder for Sign In bottom sheet
   ];
 
   void _onNavTap(int index) {
-    if (index == 3) {
-      _showSignInSheet();
-      return;
-    }
+    // if (index == 3) {
+    //   _showSignInSheet();
+    //   return;
+    // }
     setState(() {
       _currentIndex = index;
     });
-  }
-
-  void _showSignInSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.grey.shade900,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (context) {
-        return const RegisterScreen();
-      },
-    );
   }
 
   @override
@@ -56,10 +53,7 @@ class _FashionPageState extends State<FashionPage> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                Image.asset(
-                  "images/Stitches Africa Logo-06.png",
-                  height: 42,
-                ),
+                Image.asset("images/Stitches Africa Logo-06.png", height: 42),
                 const SizedBox(width: 3),
                 ShaderMask(
                   shaderCallback: (bounds) => const LinearGradient(
@@ -125,11 +119,23 @@ class _FashionPageState extends State<FashionPage> {
             currentIndex: _currentIndex,
             onTap: _onNavTap,
             type: BottomNavigationBarType.fixed,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-              BottomNavigationBarItem(icon: Icon(Icons.star), label: "Featured Ads"),
-              BottomNavigationBarItem(icon: Icon(Icons.shopping_bag), label: "Products"),
-              BottomNavigationBarItem(icon: Icon(Icons.person), label: "Sign In"),
+            items: [
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.home),
+                label: "Home",
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.star),
+                label: "Featured Ads",
+              ),
+              const BottomNavigationBarItem(
+                icon: Icon(Icons.shopping_bag),
+                label: "Products",
+              ),
+              BottomNavigationBarItem(
+                icon: Icon(Icons.person),
+                label: profileOrSignIn,
+              ),
             ],
           ),
         ),

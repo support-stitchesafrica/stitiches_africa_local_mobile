@@ -1,7 +1,7 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stitches_africa_local/utils/prefs.dart';
 
 // ✅ Correct import for pay_with_paystack
 import 'package:pay_with_paystack/pay_with_paystack.dart';
@@ -18,11 +18,11 @@ const String paystackPublicKey = "pk_test_37eba43300c473e8c80690177c32daf9302f82
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Prefs.init(); // IMPORTANT: init once before runApp
 
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('token');
-  final initialRoute =
-      (token != null && token.isNotEmpty) ? '/home' : '/splash';
+  final initialRoute = (Prefs.token != null && Prefs.token!.isNotEmpty)
+      ? '/home'
+      : '/splash';
 
   runApp(
     MultiProvider(
@@ -31,7 +31,9 @@ void main() async {
           create: (_) => AuthController(),
         ),
       ],
-      child: StitchesAfricaApp(initialRoute: initialRoute),
+      child: StitchesAfricaApp(
+        initialRoute: initialRoute,
+      ), // ✅ MaterialApp is BELOW providers
     ),
   );
 }
