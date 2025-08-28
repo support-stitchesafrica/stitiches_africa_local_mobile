@@ -1,7 +1,7 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:stitches_africa_local/utils/prefs.dart';
 
 import 'controllers/auth_controller.dart'; // ✅ use ONE consistent import style
 import 'fashion_page.dart';
@@ -12,9 +12,11 @@ import 'splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final prefs = await SharedPreferences.getInstance();
-  final token = prefs.getString('token');
-  final initialRoute = (token != null && token.isNotEmpty) ? '/home' : '/splash';
+  await Prefs.init(); // IMPORTANT: init once before runApp
+
+  final initialRoute = (Prefs.token != null && Prefs.token!.isNotEmpty)
+      ? '/home'
+      : '/splash';
 
   runApp(
     MultiProvider(
@@ -23,7 +25,9 @@ void main() async {
           create: (_) => AuthController(), // ✅ provide it here
         ),
       ],
-      child: StitchesAfricaApp(initialRoute: initialRoute), // ✅ MaterialApp is BELOW providers
+      child: StitchesAfricaApp(
+        initialRoute: initialRoute,
+      ), // ✅ MaterialApp is BELOW providers
     ),
   );
 }
