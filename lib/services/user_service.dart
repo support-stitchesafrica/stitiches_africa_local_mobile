@@ -5,7 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 
 class UserService {
-  final String baseUrl = "https://stictches-africa-api-local.vercel.app/api"; // ⬅️ Replace with your backend URL
+  final String baseUrl =
+      "https://stictches-africa-api-local.vercel.app/api"; // ⬅️ Replace with your backend URL
 
   /// 🔑 Get token from local storage
   Future<String?> _getToken() async {
@@ -28,8 +29,22 @@ class UserService {
 
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
-      return User.fromJson(data["user"]);
+      print('API response data: $data');
+
+      // Handle different response structures
+      Map<String, dynamic> userData;
+      if (data["user"] != null) {
+        userData = data["user"];
+      } else if (data["data"] != null) {
+        userData = data["data"];
+      } else {
+        userData = data; // Assume the entire response is user data
+      }
+
+      print('User data from API: $userData');
+      return User.fromJson(userData);
     } else {
+      print('API error response: ${response.body}');
       throw Exception("Failed to load profile");
     }
   }
@@ -52,6 +67,7 @@ class UserService {
       final data = json.decode(response.body);
       return User.fromJson(data["user"]);
     } else {
+      print('API error response: ${response.body}');
       throw Exception("Failed to update profile");
     }
   }
@@ -85,9 +101,7 @@ class UserService {
 
     final response = await http.get(
       Uri.parse("$baseUrl/user/my-ads"),
-      headers: {
-        "Authorization": "Bearer $token",
-      },
+      headers: {"Authorization": "Bearer $token"},
     );
 
     if (response.statusCode == 200) {
