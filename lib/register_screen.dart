@@ -526,10 +526,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
               actions: [
                 TextButton.icon(
                   onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/login',
-                    ); // ✅ Go to login screen
+                    try {
+                      Navigator.pushNamed(
+                        context,
+                        '/login',
+                      ); // ✅ Go to login screen
+                    } catch (e) {
+                      print('Error:$e');
+                    }
                   },
                   icon: const Icon(Icons.person, color: Colors.black),
                   label: const Text(

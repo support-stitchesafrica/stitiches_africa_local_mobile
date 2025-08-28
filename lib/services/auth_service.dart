@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class AuthService {
-  final String baseUrl = "http://10.0.2.2:5000/api"; // ✅ Replace with your server URL
+  final String baseUrl = "https://stictches-africa-api-local.vercel.app/api"; // ✅ Replace with your server URL
 
   Future<Map<String, dynamic>> registerUser({
     required String fullName,
@@ -71,7 +71,7 @@ Future<Map<String, dynamic>> login({
     required String email,
     required String password,
   }) async {
-    final url = Uri.parse('$baseUrl/login');
+    final url = Uri.parse('$baseUrl/auth/login');
 
     final response = await http.post(
       url,
