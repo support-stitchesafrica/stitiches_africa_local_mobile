@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class CategoryService {
-  final String baseUrl = "http://10.0.2.2:5000/api"; // Android emulator local API
+  final String baseUrl = "https://stictches-africa-api-local.vercel.app/api"; // Android emulator local API
 
   /// Fetch categories with their subcategories
   Future<List<Map<String, dynamic>>> getCategoriesWithSubcategories() async {

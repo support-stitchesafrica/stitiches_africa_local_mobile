@@ -49,12 +49,10 @@ class _SellFormScreenState extends State<SellFormScreen> {
     final ImagePicker picker = ImagePicker();
     final List<XFile> pickedFiles = await picker.pickMultiImage();
 
-    if (pickedFiles != null) {
-      setState(() {
-        _selectedImages = pickedFiles.map((file) => File(file.path)).toList();
-      });
+    setState(() {
+      _selectedImages = pickedFiles.map((file) => File(file.path)).toList();
+    });
     }
-  }
 
   bool _isStep1Valid() {
     return _selectedCategory != null &&

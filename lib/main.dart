@@ -1,27 +1,35 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:stitches_africa_local/register_screen.dart';
-import 'package:stitches_africa_local/sell_ad.dart';
 
+import 'controllers/auth_controller.dart'; // ✅ use ONE consistent import style
 import 'fashion_page.dart';
-import 'featured_screen.dart';
 import 'login_screen.dart';
-import 'product_page.dart';
+import 'register_screen.dart';
+import 'sell_ad.dart';
 import 'splash_screen.dart';
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized(); // Required for async in main
-  // ✅ Preload SharedPreferences and determine initial route before runApp
-  SharedPreferences prefs = await SharedPreferences.getInstance();
-  String? token = prefs.getString('token');
-  String initialRoute = (token != null && token.isNotEmpty) ? '/home' : '/splash';
+  WidgetsFlutterBinding.ensureInitialized();
+  final prefs = await SharedPreferences.getInstance();
+  final token = prefs.getString('token');
+  final initialRoute = (token != null && token.isNotEmpty) ? '/home' : '/splash';
 
-  runApp(StitchesAfricaApp(initialRoute: initialRoute));
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AuthController>(
+          create: (_) => AuthController(), // ✅ provide it here
+        ),
+      ],
+      child: StitchesAfricaApp(initialRoute: initialRoute), // ✅ MaterialApp is BELOW providers
+    ),
+  );
 }
 
 class StitchesAfricaApp extends StatelessWidget {
   final String initialRoute;
-
   const StitchesAfricaApp({super.key, required this.initialRoute});
 
   @override
@@ -64,62 +72,4 @@ class StitchesAfricaApp extends StatelessWidget {
       },
     );
   }
-}
-
-
-
-
-/* ----------- Home Content ----------- */
-
-class _CategoryTile extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-
-  const _CategoryTile({
-    required this.icon,
-    required this.label,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
-        color: Colors.white60,
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: color.withOpacity(0.15),
-            child: Icon(icon, size: 30, color: color),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: Colors.black,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/* ---------------- Helpers ---------------- */
-class _Cat {
-  final IconData icon;
-  final String title;
-  final Color color;
-  _Cat(this.icon, this.title, this.color);
 }
