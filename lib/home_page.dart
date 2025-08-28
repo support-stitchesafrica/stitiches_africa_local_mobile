@@ -250,66 +250,81 @@ class _HomePageState extends State<HomePage> {
                     ),
                   )
                 else
+                  // Ensure unique, non-empty brand names (case-insensitive)
                   SliverPadding(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    sliver: SliverGrid(
-                      delegate: SliverChildBuilderDelegate((context, index) {
-                        final brandName = brandList[index];
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BrandListingsPage(
-                                  brand: brandName,
-                                  ads: allAds
-                                      .where((ad) => ad.brand == brandName)
-                                      .toList(),
+                    sliver: Builder(
+                      builder: (context) {
+                        // Remove duplicates (case-insensitive), ignore empty
+                        final seen = <String>{};
+                        final uniqueBrands = <String>[];
+                        for (final brand in brandList) {
+                          final normalized = brand.trim().toLowerCase();
+                          if (normalized.isNotEmpty && !seen.contains(normalized)) {
+                            seen.add(normalized);
+                            uniqueBrands.add(brand);
+                          }
+                        }
+                        return SliverGrid(
+                          delegate: SliverChildBuilderDelegate((context, index) {
+                            final brandName = uniqueBrands[index];
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => BrandListingsPage(
+                                      brand: brandName,
+                                      ads: allAds
+                                          .where((ad) => ad.brand == brandName)
+                                          .toList(),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const CircleAvatar(
+                                      radius: 30,
+                                      backgroundColor: Colors.black,
+                                      child: Icon(
+                                        Icons.store,
+                                        color: Colors.white,
+                                        size: 28,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      brandName,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
-                          },
-                          child: Container(
-                            margin: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const CircleAvatar(
-                                  radius: 30,
-                                  backgroundColor: Colors.black,
-                                  child: Icon(
-                                    Icons.store,
-                                    color: Colors.white,
-                                    size: 28,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  brandName,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+                          }, childCount: uniqueBrands.length),
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: 2,
+                                mainAxisSpacing: 10,
+                                crossAxisSpacing: 10,
+                                childAspectRatio: 1,
+                              ),
                         );
-                      }, childCount: brandList.length),
-                      gridDelegate:
-                          const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            mainAxisSpacing: 10,
-                            crossAxisSpacing: 10,
-                            childAspectRatio: 1,
-                          ),
+                      },
                     ),
                   ),
               ],
