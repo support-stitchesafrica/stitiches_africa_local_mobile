@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:stitches_africa_local/home_page.dart';
 import '../controllers/auth_controller.dart';
-import 'home.dart';
 import 'register_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -23,43 +23,57 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
- Future<void> _handleLogin(AuthController authController) async {
-  final email = emailController.text.trim();
-  final password = passwordController.text.trim();
+  Future<void> _handleLogin(AuthController authController) async {
+    final email = emailController.text.trim();
+    final password = passwordController.text.trim();
 
-  if (email.isEmpty || password.isEmpty) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Please fill all fields")),
-    );
-    return;
+    if (email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+      return;
+    }
+
+    try {
+      await authController.login(email: email, password: password);
+
+      if (!mounted) return;
+
+      if (authController.token != null) {
+        // ✅ Save to local storage
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString("token", authController.token!);
+
+        // You can also save user data if returned from API
+        // await prefs.setString("user", jsonEncode(authController.user));
+
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Login successful")));
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => const HomePage()),
+        );
+      } else if (authController.error != null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Login failed: ${authController.error!}")),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Login failed: Unknown error")),
+        );
+      }
+    } catch (e, stack) {
+      // Show error and print stack trace for debugging
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("An error occurred: $e")));
+      debugPrint("Login error: $e");
+      debugPrintStack(stackTrace: stack);
+    }
   }
 
-  await authController.login(email: email, password: password);
-
-  if (!mounted) return;
-
-  if (authController.token != null) {
-    // ✅ Save to local storage
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString("token", authController.token!);
-
-    // You can also save user data if returned from API
-    // await prefs.setString("user", jsonEncode(authController.user));
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Login successful")),
-    );
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const HomePage()),
-    );
-  } else if (authController.error != null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(authController.error!)),
-    );
-  }
-}
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -82,10 +96,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 20),
                   const Text(
                     "Welcome Back",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 30),
@@ -131,7 +142,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => const RegisterScreen()),
+                            builder: (_) => const RegisterScreen(),
+                          ),
                         );
                       },
                       child: const Text(
