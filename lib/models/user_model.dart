@@ -4,6 +4,7 @@ class User {
   final String email;
   final String? dob;
   final String? gender;
+  final String? image;
   final List<String>? category;
   final List<String>? style;
   final String? priceRange;
@@ -22,6 +23,7 @@ class User {
     this.category,
     this.style,
     this.priceRange,
+    this.image,
     this.shoppingPreference,
     this.latitude,
     this.longitude,
@@ -36,6 +38,7 @@ class User {
       email: json["email"] ?? "",
       dob: json["dob"],
       gender: json["gender"],
+      image: json['image'],
       category: json["category"] != null
           ? List<String>.from(json["category"])
           : null,

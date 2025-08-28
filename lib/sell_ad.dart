@@ -1,5 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
 
 import 'services/category_service.dart';
@@ -13,17 +15,31 @@ class SellFormScreen extends StatefulWidget {
 
 class _SellFormScreenState extends State<SellFormScreen> {
   int _currentStep = 0;
-  final CategoryService _categoryService = CategoryService();
-  List<Map<String, dynamic>> _categories = [];
-  bool _isLoading = false;
-  String? error;
 
+  List<Map<String, dynamic>> categoryData = [];
+  bool isLoadingCategories = true;
+
+  // User selections
+  String? selectedCategory;
+  String? selectedSubcategory;
   // Step 1 values
   String? _selectedCategory;
   String? _selectedSubCategory;
   String? _selectedState;
   String? _selectedArea;
+  final ImagePicker _picker = ImagePicker();
   List<File> _selectedImages = [];
+
+  String? latitude;
+  String? longitude;
+  String? address;
+  bool _isGettingLocation = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchCategories();
+  }
 
   // Step 2 controllers
   final TextEditingController _titleController = TextEditingController();
@@ -36,6 +52,7 @@ class _SellFormScreenState extends State<SellFormScreen> {
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
+  final locationController = TextEditingController();
 
   // Promo selection
   String? _selectedPromo; // "No promo", "TOP", "Boost Premium promo"
@@ -43,22 +60,113 @@ class _SellFormScreenState extends State<SellFormScreen> {
   // Dummy data
   final Map<String, List<String>> categories = {
     "Fragrances": ["Perfume", "Cologne", "Body Mist"],
-    "Electronics": ["Phones", "Laptops", "Accessories"]
+    "Electronics": ["Phones", "Laptops", "Accessories"],
   };
 
   final Map<String, List<String>> states = {
     "Lagos": ["Ikeja", "Surulere", "Lekki"],
-    "Abuja": ["Garki", "Wuse", "Maitama"]
+    "Abuja": ["Garki", "Wuse", "Maitama"],
   };
 
-  Future<void> _pickImages() async {
-    final ImagePicker picker = ImagePicker();
-    final List<XFile> pickedFiles = await picker.pickMultiImage();
-
-    setState(() {
-      _selectedImages = pickedFiles.map((file) => File(file.path)).toList();
-    });
+  Future<void> _fetchCategories() async {
+    try {
+      final data = await CategoryService().getCategoriesWithSubcategories();
+      setState(() {
+        categoryData = data;
+        isLoadingCategories = false;
+      });
+    } catch (e) {
+      setState(() => isLoadingCategories = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
     }
+  }
+
+  Future<void> _getUserLocation() async {
+    setState(() {
+      _isGettingLocation = true;
+    });
+
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Location services are disabled.")),
+        );
+        setState(() => _isGettingLocation = false);
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Location permission denied.")),
+          );
+          setState(() => _isGettingLocation = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Location permission permanently denied."),
+          ),
+        );
+        setState(() => _isGettingLocation = false);
+        return;
+      }
+
+      Position pos = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high,
+      );
+
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        pos.latitude,
+        pos.longitude,
+      );
+
+      String fullAddress = "";
+      if (placemarks.isNotEmpty) {
+        final place = placemarks.first;
+        fullAddress =
+            "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
+      }
+
+      setState(() {
+        latitude = pos.latitude.toString();
+        longitude = pos.longitude.toString();
+        address = fullAddress;
+        locationController.text =
+            address ?? "${pos.latitude}, ${pos.longitude}";
+        _isGettingLocation = false;
+      });
+    } catch (e) {
+      setState(() => _isGettingLocation = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
+    }
+  }
+
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile>? pickedFiles = await _picker.pickMultiImage(
+        imageQuality: 80, // compress a bit for performance
+      );
+
+      if (pickedFiles != null && pickedFiles.isNotEmpty) {
+        setState(() {
+          _selectedImages.addAll(pickedFiles.map((xfile) => File(xfile.path)));
+        });
+      }
+    } catch (e) {
+      debugPrint("Error picking images: $e");
+    }
+  }
 
   bool _isStep1Valid() {
     return _selectedCategory != null &&
@@ -86,8 +194,10 @@ class _SellFormScreenState extends State<SellFormScreen> {
     } else if (_currentStep == 1 && _isStep2Valid()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-            content: Text(
-                "Ad posted successfully with promo: ${_selectedPromo ?? 'No promo'}")),
+          content: Text(
+            "Ad posted successfully with promo: ${_selectedPromo ?? 'No promo'}",
+          ),
+        ),
       );
       Navigator.pushNamed(context, "/home");
     }
@@ -140,7 +250,9 @@ class _SellFormScreenState extends State<SellFormScreen> {
             value: _selectedCategory,
             items: categories.keys
                 .map<DropdownMenuItem<String>>(
-                    (cat) => DropdownMenuItem<String>(value: cat, child: Text(cat)))
+                  (cat) =>
+                      DropdownMenuItem<String>(value: cat, child: Text(cat)),
+                )
                 .toList(),
             onChanged: (val) {
               setState(() {
@@ -154,42 +266,39 @@ class _SellFormScreenState extends State<SellFormScreen> {
           _label("Subcategory*"),
           DropdownButtonFormField<String>(
             value: _selectedSubCategory,
-            items: (_selectedCategory != null
-                    ? categories[_selectedCategory]!
-                    : [])
-                .map<DropdownMenuItem<String>>(
-                    (sub) => DropdownMenuItem<String>(value: sub, child: Text(sub)))
-                .toList(),
+            items:
+                (_selectedCategory != null
+                        ? categories[_selectedCategory]!
+                        : [])
+                    .map<DropdownMenuItem<String>>(
+                      (sub) => DropdownMenuItem<String>(
+                        value: sub,
+                        child: Text(sub),
+                      ),
+                    )
+                    .toList(),
             onChanged: (val) => setState(() => _selectedSubCategory = val),
             decoration: _inputDecoration(),
           ),
           const SizedBox(height: 16),
-          _label("Select Location*"),
-          DropdownButtonFormField<String>(
-            value: _selectedState,
-            items: states.keys
-                .map<DropdownMenuItem<String>>(
-                    (state) => DropdownMenuItem<String>(value: state, child: Text(state)))
-                .toList(),
-            onChanged: (val) {
-              setState(() {
-                _selectedState = val;
-                _selectedArea = null;
-              });
-            },
-            decoration: _inputDecoration(),
+          TextField(
+            controller: locationController,
+            readOnly: true,
+            decoration: InputDecoration(
+              labelText: "Your location",
+              border: const OutlineInputBorder(),
+              suffixIcon: _isGettingLocation
+                  ? const Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.my_location),
+                      onPressed: _getUserLocation,
+                    ),
+            ),
           ),
-          const SizedBox(height: 16),
-          _label("Area*"),
-          DropdownButtonFormField<String>(
-            value: _selectedArea,
-            items: (_selectedState != null ? states[_selectedState]! : [])
-                .map<DropdownMenuItem<String>>(
-                    (area) => DropdownMenuItem<String>(value: area, child: Text(area)))
-                .toList(),
-            onChanged: (val) => setState(() => _selectedArea = val),
-            decoration: _inputDecoration(),
-          ),
+
           const SizedBox(height: 16),
           _label("Add Photos*"),
           InkWell(
@@ -210,18 +319,51 @@ class _SellFormScreenState extends State<SellFormScreen> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text("First image will be used as title image",
-              style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const Text(
+            "First image will be used as title image",
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
           const SizedBox(height: 10),
           if (_selectedImages.isNotEmpty)
             SizedBox(
               height: 100,
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) => ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(_selectedImages[index],
-                      width: 100, height: 100, fit: BoxFit.cover),
+                itemBuilder: (context, index) => Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.file(
+                        _selectedImages[index],
+                        width: 100,
+                        height: 100,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            _selectedImages.removeAt(index);
+                          });
+                        },
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: Colors.black54,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          padding: const EdgeInsets.all(2),
+                          child: const Icon(
+                            Icons.close,
+                            size: 18,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemCount: _selectedImages.length,
@@ -250,17 +392,28 @@ class _SellFormScreenState extends State<SellFormScreen> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _inputField(_collectionController, hint: "Collection")),
+              Expanded(
+                child: _inputField(_collectionController, hint: "Collection"),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: _inputField(_scentController, hint: "Perfume Type/Scent")),
+              Expanded(
+                child: _inputField(
+                  _scentController,
+                  hint: "Perfume Type/Scent",
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _inputField(_formulationController, hint: "Formulation")),
+              Expanded(
+                child: _inputField(_formulationController, hint: "Formulation"),
+              ),
               const SizedBox(width: 12),
-              Expanded(child: _inputField(_volumeController, hint: "Volume (ml)")),
+              Expanded(
+                child: _inputField(_volumeController, hint: "Volume (ml)"),
+              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -287,9 +440,11 @@ class _SellFormScreenState extends State<SellFormScreen> {
       children: [
         _promoCard("No promo", "free"),
         const SizedBox(height: 10),
-        _promoCard("TOP", "₦ 3,499", subtitle: "7 days or 20 days"),
+        _promoCard("TOP", "₦ 11,999", subtitle: "7 days"),
         const SizedBox(height: 10),
-        _promoCard("Boost Premium promo", "₦ 31,999", subtitle: "1 month"),
+        _promoCard("Boost Premium promo", "₦ 19,999", subtitle: "14 days"),
+        const SizedBox(height: 10),
+        _promoCard("Boost Premium promo", "₦ 29,999", subtitle: "30 days"),
       ],
     );
   }
@@ -315,17 +470,28 @@ class _SellFormScreenState extends State<SellFormScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style:
-                        const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
                 if (subtitle != null)
-                  Text(subtitle,
-                      style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
               ],
             ),
-            Text(price,
-                style: const TextStyle(
-                    fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black)),
+            Text(
+              price,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
           ],
         ),
       ),
@@ -335,15 +501,15 @@ class _SellFormScreenState extends State<SellFormScreen> {
   Widget _label(String text) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Text(
-        text,
-        style: const TextStyle(fontWeight: FontWeight.bold),
-      ),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.bold)),
     );
   }
 
-  Widget _inputField(TextEditingController controller,
-      {String hint = "", int maxLines = 1}) {
+  Widget _inputField(
+    TextEditingController controller, {
+    String hint = "",
+    int maxLines = 1,
+  }) {
     return TextField(
       controller: controller,
       maxLines: maxLines,
