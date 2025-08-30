@@ -16,25 +16,27 @@ class AuthService {
     double? longitude,
     String? address,
     String? gender,
+    String? userType,
   }) async {
     final url = Uri.parse("$baseUrl/auth/register");
 
     final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "fullName": fullName,
-        "email": email,
-        "password": password,
-        "bvn": bvn,
-        "phone": phone,
-        "category": category,
-        "latitude": latitude,
-        "longitude": longitude,
-        "address": address,
-        "gender": gender,
-      }),
-    );
+  url,
+  headers: {"Content-Type": "application/json"},
+  body: jsonEncode({
+    "fullName": fullName,
+    "email": email,
+    "password": password,
+    "bvn": bvn,
+    "phone": phone,
+    "category": category,
+    "latitude": latitude,
+    "longitude": longitude,
+    "address": address,
+    "gender": gender,
+    "userType": "CUSTOMer", // <-- add this
+  }),
+);
 
     if (response.statusCode == 201) {
       return jsonDecode(response.body);
@@ -51,28 +53,33 @@ class AuthService {
     required String password,
     required String brandName,
     required String phone,
+    required String userType,
     String? logo, // optional, backend expects uploaded file
     double? latitude,
     double? longitude,
     String? address,
+    List<String>? category,
   }) async {
     final url = Uri.parse("$baseUrl/auth/register/vendor");
 
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "fullName": fullName,
-        "email": email,
-        "password": password,
-        "brandName": brandName,
-        "phone": phone,
-        "logo": logo, // optional (backend might handle file upload differently)
-        "latitude": latitude,
-        "longitude": longitude,
-        "address": address,
-      }),
-    );
+   final response = await http.post(
+  url,
+  headers: {"Content-Type": "application/json"},
+  body: jsonEncode({
+    "fullName": fullName,
+    "email": email,
+    "password": password,
+    "brandName": brandName,
+    "phone": phone,
+    "logo": logo,
+    "latitude": latitude,
+    "longitude": longitude,
+    "address": address,
+    "userType": "VENDOR", // <-- add this
+    category: category,
+  }),
+);
+
 
     if (response.statusCode == 201) {
       return jsonDecode(response.body);

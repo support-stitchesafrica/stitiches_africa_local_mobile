@@ -60,6 +60,9 @@ class AuthController with ChangeNotifier {
     required String phone,
     String? category,
     String? gender,
+    String? address,
+    String? userType, double? latitude, double? longitude,
+
   }) async {
     try {
       _isLoading = true;
@@ -81,6 +84,8 @@ class AuthController with ChangeNotifier {
         longitude: longitude,
         address: address,
         gender: gender,
+        userType: "CUSTOMER", // <-- add this
+
       );
 
       return result;
@@ -97,7 +102,8 @@ class AuthController with ChangeNotifier {
     required String password,
     required String brandName,
     required String phone,
-    String? logo,
+    List<String>? category,
+    String? logo, double? latitude, double? longitude, String? address, required String userType,
   }) async {
     try {
       _isLoading = true;
@@ -117,6 +123,8 @@ class AuthController with ChangeNotifier {
         latitude: latitude,
         longitude: longitude,
         address: address,
+        category: category,
+        userType: "VENDOR", // <-- add this
       );
 
       return result;

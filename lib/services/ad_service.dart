@@ -20,7 +20,7 @@ class AdService {
 
   /// Get all ads
   Future<List<Ad>> getAllAds() async {
-    final res = await http.get(Uri.parse("$baseUrl/ads"), headers: headers);
+    final res = await http.get(Uri.parse("$baseUrl/sell"), headers: headers);
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);
       return data.map((e) => Ad.fromJson(e)).toList();
@@ -30,7 +30,7 @@ class AdService {
 
   /// Get ad by ID
   Future<Ad> getAdById(String id) async {
-    final res = await http.get(Uri.parse("$baseUrl/ads/$id"), headers: headers);
+    final res = await http.get(Uri.parse("$baseUrl/sell/$id"), headers: headers);
     if (res.statusCode == 200) {
       return Ad.fromJson(jsonDecode(res.body));
     }
@@ -39,7 +39,7 @@ class AdService {
 
   /// Get my ads
   Future<List<Ad>> getMyAds() async {
-    final res = await http.get(Uri.parse("$baseUrl/ads/my"), headers: headers);
+    final res = await http.get(Uri.parse("$baseUrl/sell/my"), headers: headers);
     if (res.statusCode == 200) {
       final List data = jsonDecode(res.body);
       return data.map((e) => Ad.fromJson(e)).toList();
@@ -51,7 +51,7 @@ class AdService {
   Future<Ad> createAd(Map<String, dynamic> fields, List<File> images) async {
     if (token == null) throw Exception("User not logged in");
 
-    var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/ads"));
+    var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/sell"));
     request.headers['Authorization'] = 'Bearer $token';
 
     // add fields
@@ -119,23 +119,27 @@ class AdService {
     }
   }
 
-  /// Get ads by location
-  Future<List<Ad>> getAdsByLocation(double lat, double lng, {double radius = 5}) async {
-    final res = await http.get(
-      Uri.parse("$baseUrl/ads/location?latitude=$lat&longitude=$lng&radius=$radius"),
+ 
+
+  /// Get ads by location (no radius)
+ Future<List<Ad>> getAdsByLocation(double latitude, double longitude, {double radius = 20}) async {
+    final response = await http.get(
+      Uri.parse('$baseUrl/sell/location?latitude=$latitude&longitude=$longitude&radius=$radius'),
       headers: headers,
     );
-    if (res.statusCode == 200) {
-      final List data = jsonDecode(res.body);
-      return data.map((e) => Ad.fromJson(e)).toList();
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final List adsData = data['ads'];
+      return adsData.map((json) => Ad.fromJson(json)).toList();
     }
-    throw Exception("Failed to fetch ads by location");
+    throw Exception('Failed to fetch ads by location');
   }
 
   /// Get brands by location
   Future<List<Map<String, dynamic>>> getBrandsByLocation(double lat, double lng, {double radius = 5}) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/ads/brands/location?latitude=$lat&longitude=$lng&radius=$radius"),
+      Uri.parse("$baseUrl/sell/brands/location?latitude=$lat&longitude=$lng&radius=$radius"),
       headers: headers,
     );
     if (res.statusCode == 200) {
@@ -148,7 +152,7 @@ class AdService {
   /// Get listings by brand
   Future<List<Ad>> getListingsByBrand(String brand, double lat, double lng, {double radius = 5}) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/ads/brands/$brand/location?latitude=$lat&longitude=$lng&radius=$radius"),
+      Uri.parse("$baseUrl/sell/brands/$brand/location?latitude=$lat&longitude=$lng&radius=$radius"),
       headers: headers,
     );
     if (res.statusCode == 200) {
@@ -161,7 +165,7 @@ class AdService {
   /// Get listing by ID + location
   Future<Ad> getListingByIdAndLocation(String id, double lat, double lng, {double radius = 5}) async {
     final res = await http.get(
-      Uri.parse("$baseUrl/ads/$id/location?latitude=$lat&longitude=$lng&radius=$radius"),
+      Uri.parse("$baseUrl/sell/$id/location?latitude=$lat&longitude=$lng&radius=$radius"),
       headers: headers,
     );
     if (res.statusCode == 200) {

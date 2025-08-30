@@ -28,7 +28,6 @@ class _FashionPageState extends State<FashionPage> {
   final List<Widget> _pages = [
     const HomePage(),
     const FeaturedAdsPage(),
-    const ProductPage(),
     ProfilePage(), // Placeholder for Sign In bottom sheet
   ];
 

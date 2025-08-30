@@ -199,6 +199,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
             phone: "", // Add required phone parameter
             category: selectedCategories.join(", "), // Convert list to string
             gender: gender ?? '',
+            latitude: latitude != null ? double.parse(latitude!) : null,
+            longitude: longitude != null ? double.parse(longitude!) : null,
+            address: address,
+            userType: "CUSTOMER", // <-- add this
           );
 
           ScaffoldMessenger.of(context).showSnackBar(

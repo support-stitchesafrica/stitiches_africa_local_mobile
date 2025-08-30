@@ -108,7 +108,8 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         latitude = pos.latitude.toString();
         longitude = pos.longitude.toString();
         address = fullAddress;
-        locationController.text = address ?? "${pos.latitude}, ${pos.longitude}";
+        locationController.text =
+            address ?? "${pos.latitude}, ${pos.longitude}";
         _isGettingLocation = false;
       });
     } catch (e) {
@@ -161,6 +162,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         _formKey.currentState!.save();
 
         try {
+          // Send selected category names to backend
           await controller.registerVendor(
             fullName: fullName!,
             email: email!,
@@ -168,6 +170,11 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             brandName: brandName!,
             phone: phone!,
             logo: _logoFile?.path,
+            userType: "VENDOR",
+            latitude: latitude != null ? double.parse(latitude!) : null,
+            longitude: longitude != null ? double.parse(longitude!) : null,
+            address: address,
+            category: selectedCategories, // <-- changed here
           );
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -196,7 +203,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
     return Center(
       child: Column(
         children: [
-          Image.asset("images/Stitches Africa Logo-08.png", height: 80),
+          Image.asset("images/Stitches Africa Logo-08.png", height: 140),
           const SizedBox(height: 20),
           GestureDetector(
             onTap: _pickLogo,
@@ -230,34 +237,40 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    List<String> categoryList =
-        categoryData.map((c) => c["name"] as String).toList();
+    List<String> categoryList = categoryData
+        .map((c) => c["name"])
+        .where((name) => name != null)
+        .map((name) => name.toString())
+        .toList();
 
-    return Center(
-      child: Column(
-        children: [
-          Image.asset("images/Stitches Africa Logo-08.png", height: 80),
-          const SizedBox(height: 20),
-          const Text("Select your category preferences",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 20),
-          ...categoryList.map((cat) {
-            return CheckboxListTile(
-              title: Text(cat),
-              value: selectedCategories.contains(cat),
-              onChanged: (checked) {
-                setState(() {
-                  if (checked == true) {
-                    selectedCategories.add(cat);
-                  } else {
-                    selectedCategories.remove(cat);
-                  }
-                });
-              },
-            );
-          }),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Image.asset("images/Stitches Africa Logo-08.png", height: 140),
+        const SizedBox(height: 20),
+        const Text("Select your category preferences",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const SizedBox(height: 20),
+        Expanded(
+          child: ListView(
+            children: categoryList.map((cat) {
+              return CheckboxListTile(
+                title: Text(cat),
+                value: selectedCategories.contains(cat),
+                onChanged: (checked) {
+                  setState(() {
+                    if (checked == true) {
+                      selectedCategories.add(cat);
+                    } else {
+                      selectedCategories.remove(cat);
+                    }
+                  });
+                },
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -265,7 +278,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
     return Center(
       child: Column(
         children: [
-          Image.asset("images/Stitches Africa Logo-08.png", height: 80),
+          Image.asset("images/Stitches Africa Logo-08.png", height: 140),
           const SizedBox(height: 20),
           const Text("Set your location",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -300,7 +313,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         key: _formKey,
         child: Column(
           children: [
-            Image.asset("images/Stitches Africa Logo-08.png", height: 80),
+            Image.asset("images/Stitches Africa Logo-08.png", height: 140),
             const SizedBox(height: 20),
             const Text("Create your account",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
@@ -359,13 +372,14 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
               title: const Text("Vendor Register"),
               centerTitle: true,
             ),
-            body: Center(
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: controller.isLoading
-                    ? const CircularProgressIndicator()
-                    : SingleChildScrollView(child: steps[_currentStep]),
-              ),
+            body: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: controller.isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.7,
+                      child: steps[_currentStep],
+                    ),
             ),
             bottomNavigationBar: Padding(
               padding: const EdgeInsets.all(20.0),
