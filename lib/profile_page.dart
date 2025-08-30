@@ -19,11 +19,18 @@ class _ProfilePageState extends State<ProfilePage> {
   User? _user;
   bool _isLoading = true;
   String? _error;
+  bool _showingSignInSheet = false;
 
   @override
   void initState() {
     super.initState();
     _loadUserProfile();
+  }
+
+  @override
+  void dispose() {
+    _showingSignInSheet = false;
+    super.dispose();
   }
 
   Future<void> _loadUserProfile() async {
@@ -98,6 +105,9 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void showSignInSheet(BuildContext context) {
+    if (_showingSignInSheet) return; // Prevent multiple sheets
+
+    _showingSignInSheet = true;
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.grey.shade900,
@@ -108,7 +118,9 @@ class _ProfilePageState extends State<ProfilePage> {
       builder: (context) {
         return const RegisterScreen();
       },
-    );
+    ).then((_) {
+      _showingSignInSheet = false; // Reset flag when sheet is closed
+    });
   }
 
   Widget _accountSettingItem({
@@ -179,7 +191,14 @@ class _ProfilePageState extends State<ProfilePage> {
     final t = Prefs.token;
 
     if (t == null || t.isEmpty) {
-      showSignInSheet(context);
+      // Only show sign-in sheet if not already showing
+      if (!_showingSignInSheet) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && !_showingSignInSheet) {
+            showSignInSheet(context);
+          }
+        });
+      }
       return const Scaffold(
         body: Center(child: Text('Please sign in to view your profile')),
       );

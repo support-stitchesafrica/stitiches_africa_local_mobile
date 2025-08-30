@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:stitches_africa_local/profile_page.dart';
 import 'package:stitches_africa_local/register_screen.dart';
 import 'package:stitches_africa_local/featured_screen.dart';
-import 'package:stitches_africa_local/product_page.dart';
 import 'package:stitches_africa_local/utils/prefs.dart';
 import 'home_page.dart'; // Import HomePage from its own file
 
@@ -121,10 +120,10 @@ class _FashionPageState extends State<FashionPage> {
             items: [
               const BottomNavigationBarItem(
                 icon: Image(
-    image: AssetImage("images/Stitches Africa Logo-06.png"),
-    height: 42,
-  ),
-  label: "",
+                  image: AssetImage("images/Stitches Africa Logo-06.png"),
+                  height: 42,
+                ),
+                label: "",
               ),
               const BottomNavigationBarItem(
                 icon: Icon(Icons.favorite),

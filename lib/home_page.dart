@@ -44,7 +44,15 @@ class _HomePageState extends State<HomePage> {
     _initEverything();
   }
 
+  @override
+  void dispose() {
+    // Clean up any resources if needed
+    super.dispose();
+  }
+
   Future<void> _initEverything() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       error = null;
@@ -59,13 +67,17 @@ class _HomePageState extends State<HomePage> {
       await _determineAndReverseGeocode();
       await _fetchAdsByLocation();
     } catch (e) {
-      setState(() {
-        error = e.toString();
-      });
+      if (mounted) {
+        setState(() {
+          error = e.toString();
+        });
+      }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -75,6 +87,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _determineAndReverseGeocode() async {
+    if (!mounted) return;
     setState(() => _locBusy = true);
 
     try {
@@ -112,19 +125,23 @@ class _HomePageState extends State<HomePage> {
             "${place.street}, ${place.locality}, ${place.administrativeArea}, ${place.country}";
       }
 
-      setState(() {
-        _position = pos;
-        _address = fullAddress;
-        _locBusy = false;
-      });
+      if (mounted) {
+        setState(() {
+          _position = pos;
+          _address = fullAddress;
+          _locBusy = false;
+        });
+      }
     } catch (e) {
-      setState(() => _locBusy = false);
-      setState(() => error = "Error fetching location: $e");
+      if (mounted) {
+        setState(() => _locBusy = false);
+        setState(() => error = "Error fetching location: $e");
+      }
     }
   }
 
   Future<void> _fetchAdsByLocation() async {
-    if (_position == null) return;
+    if (_position == null || !mounted) return;
 
     try {
       final ads = await _adService.getAdsByLocation(
@@ -132,18 +149,24 @@ class _HomePageState extends State<HomePage> {
         _position!.longitude,
         radius: 20,
       );
-      setState(() {
-        allAds = ads;
-      });
-      _populateNearbyStoresFromAds();
+      if (mounted) {
+        setState(() {
+          allAds = ads;
+        });
+        _populateNearbyStoresFromAds();
+      }
     } catch (e) {
-      setState(() {
-        error = "Failed to fetch ads: $e";
-      });
+      if (mounted) {
+        setState(() {
+          error = "Failed to fetch ads: $e";
+        });
+      }
     }
   }
 
   void _populateNearbyStoresFromAds() {
+    if (!mounted) return;
+
     final uniqueBrands = allAds.map((ad) => ad.brand.trim()).toSet().toList();
 
     setState(() {
@@ -317,7 +340,9 @@ class _HomePageState extends State<HomePage> {
                                       MaterialPageRoute(
                                         builder: (_) => ShopListingsPage(
                                           storeName: val,
-                                          ads: uniqueAdsByTitleAndImages(ads), // ✅ use helper
+                                          ads: uniqueAdsByTitleAndImages(
+                                            ads,
+                                          ), // ✅ use helper
                                         ),
                                       ),
                                     );

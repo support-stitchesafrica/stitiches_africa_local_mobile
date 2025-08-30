@@ -59,7 +59,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
         isLoadingCategories = false;
       });
     } catch (e) {
-      setState(() => isLoadingCategories = false);
+      setState(() {
+        // Fallback categories if API fails
+        categoryData = [
+          {"id": "1", "categoryName": "BESPOKE"},
+          {"id": "2", "categoryName": "READY TO WEAR"},
+          {"id": "3", "categoryName": "FABRIC STORE OWNER"},
+        ];
+        isLoadingCategories = false;
+      });
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
@@ -199,10 +207,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             phone: "", // Add required phone parameter
             category: selectedCategories.join(", "), // Convert list to string
             gender: gender ?? '',
-            latitude: latitude != null ? double.parse(latitude!) : null,
-            longitude: longitude != null ? double.parse(longitude!) : null,
-            address: address,
-            userType: "CUSTOMER", // <-- add this
           );
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -242,8 +246,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     List<String> categoryList = categoryData
-        .map((c) => c["category"] as String)
+        .map((c) => c["categoryName"]?.toString() ?? "")
+        .where((name) => name.isNotEmpty)
         .toList();
+    // print("categoryList: $categoryList");
 
     return Center(
       child: SingleChildScrollView(
