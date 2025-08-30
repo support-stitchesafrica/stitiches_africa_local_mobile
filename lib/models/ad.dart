@@ -1,3 +1,11 @@
+import 'dart:convert';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:http_parser/http_parser.dart';
+import 'package:mime/mime.dart';
+
+/// -------------------- MODELS --------------------
 
 class User {
   final String id;
@@ -27,101 +35,93 @@ class User {
       };
 }
 
+class Category {
+  final String id;
+  final String name;
+
+  Category({
+    required this.id,
+    required this.name,
+  });
+
+  factory Category.fromJson(Map<String, dynamic> json) => Category(
+        id: json['id'],
+        name: json['name'],
+      );
+
+  Map<String, dynamic> toJson() => {
+        "id": id,
+        "name": name,
+      };
+}
+
 class Ad {
   final String id;
   final String userId;
-  final String category;
-  final String subCategory;
-  final String state;
-  final String area;
+  final String categoryName;
   final List<String> images;
   final String title;
   final String brand;
   final String? gender;
-  final String? collection;
-  final String? scent;
-  final String? formulation;
-  final String? volume;
   final String description;
   final String? promoType;
   final double price;
   final String phone;
   final double? latitude;
   final double? longitude;
-  final String address;
+  final String? address;
   final DateTime createdAt;
-  final String? condition; // ✅ Added field
   final User? user;
+  final Category? category;
 
   Ad({
     required this.id,
     required this.userId,
-    required this.category,
-    required this.subCategory,
-    required this.state,
-    required this.area,
+    required this.categoryName,
     required this.images,
     required this.title,
     required this.brand,
-    this.promoType,
     this.gender,
-    this.collection,
-    this.scent,
-    this.formulation,
-    this.volume,
     required this.description,
+    this.promoType,
     required this.price,
     required this.phone,
     this.latitude,
     this.longitude,
-    required this.address,
+    this.address,
     required this.createdAt,
-    this.condition, // ✅ Added to constructor
     this.user,
+    this.category,
   });
 
   factory Ad.fromJson(Map<String, dynamic> json) => Ad(
         id: json['id'],
         userId: json['userId'],
-        category: json['category'],
-        subCategory: json['subCategory'],
-        state: json['state'],
-        area: json['area'],
+        categoryName: json['categoryName'],
         images: List<String>.from(json['images'] ?? []),
         title: json['title'],
         brand: json['brand'],
         gender: json['gender'],
-        collection: json['collection'],
-        scent: json['scent'],
-        formulation: json['formulation'],
-        volume: json['volume'],
         description: json['description'],
         price: (json['price'] as num).toDouble(),
         phone: json['phone'],
-        latitude: json['latitude']?.toDouble(),
-        longitude: json['longitude']?.toDouble(),
+        latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
+        longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
         address: json['address'],
         promoType: json['promoType'],
         createdAt: DateTime.parse(json['createdAt']),
-        condition: json['condition'], // ✅ Parse from API
         user: json['user'] != null ? User.fromJson(json['user']) : null,
+        category: json['category'] != null ? Category.fromJson(json['category']) : null,
       );
 
   Map<String, dynamic> toJson() => {
         "id": id,
         "userId": userId,
-        "category": category,
-        "subCategory": subCategory,
-        "state": state,
-        "area": area,
+        "categoryName": categoryName,
         "images": images,
         "title": title,
         "brand": brand,
         "gender": gender,
-        "collection": collection,
-        "scent": scent,
-        "formulation": formulation,
-        "volume": volume,
         "description": description,
         "price": price,
         "phone": phone,
@@ -130,7 +130,7 @@ class Ad {
         "address": address,
         "promoType": promoType,
         "createdAt": createdAt.toIso8601String(),
-        "condition": condition, // ✅ Include in JSON
         "user": user?.toJson(),
+        "category": category?.toJson(),
       };
 }

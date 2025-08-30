@@ -2,10 +2,10 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class CategoryService {
-  final String baseUrl = "https://stictches-africa-api-local.vercel.app/api"; // Android emulator local API
+  final String baseUrl = "https://stictches-africa-api-local.vercel.app/api"; // Update if needed
 
-  /// Fetch categories with their subcategories
-  Future<List<Map<String, dynamic>>> getCategoriesWithSubcategories() async {
+  /// Fetch categories from backend
+  Future<List<Map<String, dynamic>>> getCategories() async {
     final url = Uri.parse('$baseUrl/category/categories');
     print("🔍 Sending GET request to: $url");
 
@@ -21,10 +21,10 @@ class CategoryService {
         List<dynamic> data = jsonDecode(response.body);
         print("✅ Decoded data: $data");
 
-        // Convert to List<Map<String, dynamic>>
-        return data.map((item) => {
-              "category": item["category"],
-              "subcategories": List<String>.from(item["subcategories"] ?? []),
+        // Convert to List<Map<String, dynamic>> (id + name only)
+        return data.map<Map<String, dynamic>>((item) => {
+              "id": item["id"],
+              "name": item["name"],
             }).toList();
       } else {
         print("❌ Failed response: ${response.body}");

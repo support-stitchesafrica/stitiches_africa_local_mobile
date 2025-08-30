@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:http/http.dart' as http;
@@ -8,276 +9,295 @@ import 'services/category_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-class HomePage extends StatefulWidget {
-  const HomePage({super.key});
 
-  @override
-  State<HomePage> createState() => _HomePageState();
+// NEW: location imports
+import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
+
+
+class HomePage extends StatefulWidget {
+const HomePage({super.key});
+
+
+@override
+State<HomePage> createState() => _HomePageState();
 }
 
+
 class _HomePageState extends State<HomePage> {
-  final CategoryService _categoryService = CategoryService();
-  List<Map<String, dynamic>> _categories = [];
-  bool _isLoading = false;
-  String? error;
-  List<Ad> allAds = [];
-  List<String> brandList = []; // ✅ Extracted unique brands
-  String? token;
+final CategoryService _categoryService = CategoryService();
 
-  @override
-  void initState() {
-    super.initState();
-    _fetchCategories();
-    _loadDataAndFetchAds();
-  }
 
-  Future<void> _fetchCategories() async {
-    try {
-      setState(() => _isLoading = true);
-      final data = await _categoryService.getCategoriesWithSubcategories();
+static const List<String> backendCategories = [
+"BESPOKE",
+"READY TO WEAR",
+"FABRIC STORE OWNER",
+];
 
-      /// ✅ Add Art & Painting manually if not in API
-      data.add({
-        "category": "Art & Painting",
-        "subcategories": [
-          "Oil Painting",
-          "Canvas Art",
-          "Wall Art",
-          "Sculpture",
-        ],
-      });
 
-      setState(() => _categories = data);
-    } catch (e) {
-      debugPrint("Error fetching categories: $e");
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
+bool _isLoading = false;
+String? error;
+List<Ad> allAds = [];
+String? token;
 
-  Future<void> _loadDataAndFetchAds() async {
-    try {
-      setState(() {
-        _isLoading = true;
-        error = null;
-      });
 
-      final prefs = await SharedPreferences.getInstance();
-      token = prefs.getString('token');
+Position? _position;
+String _address = "Detecting location...";
+bool _locBusy = false;
 
-      final adService = AdService(
-        baseUrl: "https://stictches-africa-api-local.vercel.app/api",
-        token: token,
-      );
 
-      final ads = await adService.getAllAds();
-      setState(() {
-        allAds = ads;
+List<String> _nearbyStores = [];
+String? _selectedNearbyStore;
 
-        /// ✅ Extract unique brands
-        brandList = ads
-            .map((ad) => ad.brand)
-            .where((brand) => brand.isNotEmpty)
-            .toSet()
-            .toList();
-      });
-    } catch (e) {
-      setState(() => error = e.toString());
-    } finally {
-      setState(() => _isLoading = false);
-    }
-  }
 
-  IconData _getIconForCategory(String category) {
-    switch (category.toLowerCase()) {
-      case "men":
-        return Icons.man;
-      case "women":
-        return Icons.woman;
-      case "kids":
-        return Icons.child_friendly;
-      case "accessories":
-        return Icons.umbrella;
-      case "art & painting":
-        return Icons.brush;
-      default:
-        return Icons.category;
-    }
-  }
+final Map<String, (double? lat, double? lng)> _brandLocation = {};
 
-  Color _getColorForCategory(String category) {
-    switch (category.toLowerCase()) {
-      case "men":
-        return Colors.cyan;
-      case "women":
-        return Colors.pinkAccent;
-      case "kids":
-        return Colors.green;
-      case "accessories":
-        return Colors.indigo;
-      case "art & painting":
-        return Colors.deepOrangeAccent;
-      default:
-        return Colors.grey;
-    }
-  }
 
+static const double _radiusKm = 5.0;
+
+
+@override
+void initState() {
+super.initState();
+_initEverything();
+}
+
+
+Future<void> _initEverything() async {
+setState(() {
+_isLoading = true;
+error = null;
+});
+
+
+try {
+await _determineAndReverseGeocode();
+}
   @override
   Widget build(BuildContext context) {
+    final busy = _isLoading || _locBusy;
     return Scaffold(
       backgroundColor: Colors.white,
-      body: _isLoading
+      body: busy
           ? const Center(child: CircularProgressIndicator())
           : error != null
-          ? Center(child: Text("Error: $error"))
-          : CustomScrollView(
-              slivers: [
-                /// ✅ Header
-                SliverToBoxAdapter(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    color: Colors.black,
-                    child: Row(
-                      children: const [
-                        _CountryDropdown(),
-                        SizedBox(width: 8),
-                        Expanded(child: _SearchField()),
-                      ],
-                    ),
-                  ),
-                ),
-
-                /// ✅ Categories Section
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Text(
-                      "Categories",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
+              ? Center(child: Text("Error: $error"))
+              : CustomScrollView(
+                  slivers: [
+                    // HEADER: two horizontal fields (Location + Nearby Store dropdown)
+                    SliverToBoxAdapter(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        color: Colors.black,
+                        child: Row(
+                          children: [
+                            // Location display (tap to refresh)
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: _refreshLocationAndStores,
+                                child: Container(
+                                  height: 44,
+                                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.my_location, color: Colors.black),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _address,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.refresh, color: Colors.black54, size: 18),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            // Nearby store dropdown (within 5km)
+                            Expanded(
+                              child: Container(
+                                height: 44,
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedNearbyStore,
+                                    isExpanded: true,
+                                    icon: const Icon(Icons.expand_more, color: Colors.black),
+                                    hint: const Text(
+                                      "Nearby stores (5km)",
+                                      style: TextStyle(
+                                        color: Colors.black54,
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    items: _nearbyStores
+                                        .map(
+                                          (store) => DropdownMenuItem(
+                                            value: store,
+                                            child: Text(store, overflow: TextOverflow.ellipsis),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (val) {
+                                      setState(() => _selectedNearbyStore = val);
+                                      if (val != null) {
+                                        final ads = _adsForStore(val);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ShopListingsPage(storeName: val, ads: ads),
+                                          ),
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      itemCount: _categories.length,
-                      itemBuilder: (context, index) {
-                        final category = _categories[index]["category"];
-                        final color = _getColorForCategory(category);
-                        final icon = _getIconForCategory(category);
 
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => SubCategoryPage(
-                                  mainCategory: category,
-                                  subCategories: List<String>.from(
-                                    _categories[index]["subcategories"],
+                    // CATEGORIES (no subcategories)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Text(
+                          "Categories",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 100,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          itemCount: backendCategories.length,
+                          itemBuilder: (context, index) {
+                            final category = backendCategories[index];
+                            final color = _getColorForCategory(category);
+                            final icon = _getIconForCategory(category);
+                            return GestureDetector(
+                              onTap: () {
+                                final stores = _storesForCategory(category);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CategoryStoresPage(
+                                      category: category,
+                                      stores: stores,
+                                      adsResolver: (store) => _adsForStore(store, category: category),
+                                    ),
                                   ),
+                                );
+                              },
+                              child: Container(
+                                width: 110,
+                                margin: const EdgeInsets.only(right: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: color,
+                                      radius: 22,
+                                      child: Icon(icon, color: Colors.white, size: 20),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                                      child: Text(
+                                        category,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 2,
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
                           },
-                          child: Container(
-                            width: 90,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: color,
-                                  radius: 20,
-                                  child: Icon(
-                                    icon,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  category,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-
-                /// ✅ Brands Section
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Text(
-                      "Brands",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
-                if (brandList.isEmpty)
-                  const SliverToBoxAdapter(
-                    child: Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(20),
-                        child: Text(
-                          "No brands found",
-                          style: TextStyle(fontSize: 14, color: Colors.black54),
                         ),
                       ),
                     ),
-                  )
-                else
-                  // Ensure unique, non-empty brand names (case-insensitive)
-                  SliverPadding(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    sliver: Builder(
-                      builder: (context) {
-                        // Remove duplicates (case-insensitive), ignore empty
-                        final seen = <String>{};
-                        final uniqueBrands = <String>[];
-                        for (final brand in brandList) {
-                          final normalized = brand.trim().toLowerCase();
-                          if (normalized.isNotEmpty && !seen.contains(normalized)) {
-                            seen.add(normalized);
-                            uniqueBrands.add(brand);
-                          }
-                        }
-                        return SliverGrid(
+
+                    // STORES (nearby only)
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Text(
+                          "Stores",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_nearbyStores.isEmpty)
+                      const SliverToBoxAdapter(
+                        child: Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(20),
+                            child: Text(
+                              "No stores found within 5 km",
+                              style: TextStyle(fontSize: 14, color: Colors.black54),
+                            ),
+                          ),
+                        ),
+                      )
+                    else
+                      SliverPadding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        sliver: SliverGrid(
                           delegate: SliverChildBuilderDelegate((context, index) {
-                            final brandName = uniqueBrands[index];
+                            final storeName = _nearbyStores[index];
                             return GestureDetector(
                               onTap: () {
+                                final ads = _adsForStore(storeName);
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => BrandListingsPage(
-                                      brand: brandName,
-                                      ads: allAds
-                                          .where((ad) => ad.brand == brandName)
-                                          .toList(),
+                                    builder: (_) => ShopListingsPage(
+                                      storeName: storeName,
+                                      ads: _uniqueByTitleAndImages(ads),
                                     ),
                                   ),
                                 );
@@ -290,197 +310,176 @@ class _HomePageState extends State<HomePage> {
                                 ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const CircleAvatar(
+                                  children: const [
+                                    CircleAvatar(
                                       radius: 30,
                                       backgroundColor: Colors.black,
-                                      child: Icon(
-                                        Icons.store,
-                                        color: Colors.white,
-                                        size: 28,
-                                      ),
+                                      child: Icon(Icons.store, color: Colors.white, size: 28),
                                     ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      brandName,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      textAlign: TextAlign.center,
-                                      style: const TextStyle(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
+                                    SizedBox(height: 8),
                                   ],
                                 ),
                               ),
                             );
-                          }, childCount: uniqueBrands.length),
-                          gridDelegate:
-                              const SliverGridDelegateWithFixedCrossAxisCount(
-                                crossAxisCount: 2,
-                                mainAxisSpacing: 10,
-                                crossAxisSpacing: 10,
-                                childAspectRatio: 1,
-                              ),
-                        );
-                      },
+                          }, childCount: _nearbyStores.length),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            childAspectRatio: 1,
+                          ),
+                        ),
+                      ),
+                    // Under each store tile, show its name (outside the avatar to handle long text)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Wrap(
+                          spacing: 16,
+                          runSpacing: 12,
+                          children: _nearbyStores
+                              .map(
+                                (s) => SizedBox(
+                                  width: MediaQuery.of(context).size.width / 2 - 28,
+                                  child: Text(
+                                    s,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                        ),
+                      ),
                     ),
-                  ),
-              ],
-            ),
+                  ],
+                ),
     );
+  }
+
+  IconData _getIconForCategory(String category) {
+    switch (category.trim().toUpperCase()) {
+      case "BESPOKE":
+        return Icons.cut;
+      case "READY TO WEAR":
+        return Icons.checkroom;
+      case "FABRIC STORE OWNER":
+        return Icons.store_mall_directory;
+      default:
+        return Icons.category;
+    }
+  }
+
+  Color _getColorForCategory(String category) {
+    switch (category.trim().toUpperCase()) {
+      case "BESPOKE":
+        return Colors.cyan;
+      case "READY TO WEAR":
+        return Colors.pinkAccent;
+      case "FABRIC STORE OWNER":
+        return Colors.indigo;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // TEMPORARY: Remove duplicates by title + images
+  List<Ad> _uniqueByTitleAndImages(List<Ad> ads) {
+    final seen = <String, bool>{};
+    final uniqueAds = <Ad>[];
+    for (final ad in ads) {
+      final key = '${ad.title}_${ad.images.join(",")}';
+      if (!seen.containsKey(key)) {
+        seen[key] = true;
+        uniqueAds.add(ad);
+      }
+    }
+    return uniqueAds;
   }
 }
 
-/// ✅ Subcategory Page
-class SubCategoryPage extends StatelessWidget {
-  final String mainCategory;
-  final List<String> subCategories;
+/// Category -> Stores (within 5km) page
+class CategoryStoresPage extends StatelessWidget {
+  final String category;
+  final List<String> stores;
+  final List<Ad> Function(String store) adsResolver;
 
-  const SubCategoryPage({
+  const CategoryStoresPage({
     super.key,
-    required this.mainCategory,
-    required this.subCategories,
+    required this.category,
+    required this.stores,
+    required this.adsResolver,
   });
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        title: Text("$category Stores (5 km)"),
         backgroundColor: Colors.black87,
-        title: Text(
-          "$mainCategory Categories",
-          style: const TextStyle(color: Colors.white),
-        ),
-        iconTheme: const IconThemeData(color: Colors.white),
+        foregroundColor: Colors.white,
       ),
-      body: ListView.builder(
-        itemCount: subCategories.length,
-        itemBuilder: (context, index) {
-          final sub = subCategories[index];
-          return ListTile(
-            leading: const Icon(Icons.label, color: Colors.black),
-            title: Text(sub, style: const TextStyle(color: Colors.black)),
-            tileColor: Colors.white70,
-          );
-        },
-      ),
-    );
-  }
-}
-
-/// ✅ Dropdown and Search Field
-class _CountryDropdown extends StatelessWidget {
-  const _CountryDropdown();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 40,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: Colors.white54,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: DropdownButtonHideUnderline(
-        child: DropdownButton<String>(
-          value: "All Fashion",
-          dropdownColor: Colors.white,
-          icon: const Icon(Icons.expand_more, color: Colors.black),
-          style: const TextStyle(
-            color: Colors.black,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-          items: const [
-            DropdownMenuItem(value: "All Fashion", child: Text("All Fashion")),
-            DropdownMenuItem(
-              value: "Men's Fashion",
-              child: Text("Men's Fashion"),
-            ),
-            DropdownMenuItem(
-              value: "Women's Fashion",
-              child: Text("Women's Fashion"),
-            ),
-            DropdownMenuItem(
-              value: "Kids Fashion",
-              child: Text("Kids Fashion"),
-            ),
-            DropdownMenuItem(value: "Accessories", child: Text("Accessories")),
-          ],
-          onChanged: (_) {},
-        ),
-      ),
-    );
-  }
-}
-
-class _SearchField extends StatelessWidget {
-  const _SearchField();
-
-  @override
-  Widget build(BuildContext context) {
-    return TextField(
-      decoration: InputDecoration(
-        hintText: "Search fashion...",
-        hintStyle: const TextStyle(fontSize: 13, color: Colors.black54),
-        prefixIcon: const Icon(Icons.search, color: Colors.black),
-        filled: true,
-        fillColor: Colors.white70,
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 12,
-          vertical: 10,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
-        ),
-      ),
-      style: const TextStyle(fontSize: 13, color: Colors.black),
-    );
-  }
-}
-
-/// ✅ Brand Listings Page
-class BrandListingsPage extends StatelessWidget {
-  final String brand;
-  final List<Ad> ads;
-
-  const BrandListingsPage({super.key, required this.brand, required this.ads});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Listings for $brand")),
-      body: ads.isEmpty
-          ? const Center(child: Text("No listings found"))
-          // TEMPORARY: Remove duplicates by title and images (workaround for now)
-          : Builder(
-              builder: (context) {
-                final seen = <String, bool>{};
-                final uniqueAds = <Ad>[];
-                for (final ad in ads) {
-                  final key = '${ad.title}_${ad.images.join(",")}';
-                  if (!seen.containsKey(key)) {
-                    seen[key] = true;
-                    uniqueAds.add(ad);
-                  }
-                }
-                return GridView.builder(
-                  padding: const EdgeInsets.all(10),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.7,
-                    crossAxisSpacing: 10,
-                    mainAxisSpacing: 10,
-                  ),
-                  itemCount: uniqueAds.length,
-                  itemBuilder: (context, index) {
-                    final ad = uniqueAds[index];
-
-                    return ProductCard(ad: ad);
+      body: stores.isEmpty
+          ? const Center(child: Text("No stores nearby for this category"))
+          : GridView.builder(
+              padding: const EdgeInsets.all(12),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 1,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: stores.length,
+              itemBuilder: (context, index) {
+                final store = stores[index];
+                return GestureDetector(
+                  onTap: () {
+                    final ads = adsResolver(store);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ShopListingsPage(
+                          storeName: store,
+                          ads: ads,
+                        ),
+                      ),
+                    );
                   },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade200,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const CircleAvatar(
+                          radius: 30,
+                          backgroundColor: Colors.black,
+                          child: Icon(Icons.store, color: Colors.white, size: 28),
+                        ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6),
+                          child: Text(
+                            store,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 );
               },
             ),
@@ -488,7 +487,53 @@ class BrandListingsPage extends StatelessWidget {
   }
 }
 
-/// ✅ Product Card Component
+/// Store Listings Page (replaces BrandListingsPage)
+class ShopListingsPage extends StatelessWidget {
+  final String storeName;
+  final List<Ad> ads;
+
+  const ShopListingsPage({super.key, required this.storeName, required this.ads});
+
+  @override
+  Widget build(BuildContext context) {
+    final uniqueAds = _uniqueByTitleAndImages(ads);
+    return Scaffold(
+      appBar: AppBar(title: Text("$storeName Listings")),
+      body: uniqueAds.isEmpty
+          ? const Center(child: Text("No listings found"))
+          : GridView.builder(
+              padding: const EdgeInsets.all(10),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 0.7,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+              ),
+              itemCount: uniqueAds.length,
+              itemBuilder: (context, index) {
+                final ad = uniqueAds[index];
+                return ProductCard(ad: ad);
+              },
+            ),
+    );
+  }
+
+  // same duplicate guard as home for consistency
+  List<Ad> _uniqueByTitleAndImages(List<Ad> ads) {
+    final seen = <String, bool>{};
+    final uniqueAds = <Ad>[];
+    for (final ad in ads) {
+      final key = '${ad.title}_${ad.images.join(",")}';
+      if (!seen.containsKey(key)) {
+        seen[key] = true;
+        uniqueAds.add(ad);
+      }
+    }
+    return uniqueAds;
+  }
+}
+
+/// Product Card Component (unchanged)
 class ProductCard extends StatelessWidget {
   final Ad ad;
   const ProductCard({super.key, required this.ad});
@@ -534,7 +579,7 @@ class ProductCard extends StatelessWidget {
   }
 }
 
-/// ✅ Product Detail Page
+/// Product Detail Page (kept; call/WhatsApp intact)
 class ProductDetailPage extends StatelessWidget {
   final Ad ad;
   const ProductDetailPage({super.key, required this.ad});

@@ -162,9 +162,9 @@ class _SplashScreenState extends State<SplashScreen> {
                         borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: () {
-                    Navigator.pushReplacementNamed(context, "/home");
+                    Navigator.pushReplacementNamed(context, "/register_vendor");
                   },
-                  child: const Text("Go to Home"),
+                  child: const Text("Seller Sign up"),
                 ),
                 OutlinedButton(
                   style: OutlinedButton.styleFrom(
@@ -176,7 +176,7 @@ class _SplashScreenState extends State<SplashScreen> {
                   onPressed: () {
                     Navigator.pushReplacementNamed(context, "/register");
                   },
-                  child: const Text("Register"),
+                  child: const Text("Buyer sign up"),
                 ),
               ],
             ),

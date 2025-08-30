@@ -12,6 +12,7 @@ import 'login_screen.dart';
 import 'register_screen.dart';
 import 'sell_ad.dart';
 import 'splash_screen.dart';
+import 'vendor_register_screen.dart';
 
 // ✅ Add your Paystack public key here
 const String paystackPublicKey = "pk_test_37eba43300c473e8c80690177c32daf9302f82e6";
@@ -77,6 +78,7 @@ class StitchesAfricaApp extends StatelessWidget {
         '/splash': (context) => const SplashScreen(),
         '/home': (context) => const FashionPage(),
         '/register': (context) => const RegisterScreen(),
+        '/register_vendor': (context) => const VendorRegisterScreen(),
         '/sell': (context) => const SellFormScreen(),
         '/login': (context) => const LoginScreen(),
       },

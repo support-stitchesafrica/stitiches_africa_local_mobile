@@ -16,23 +16,10 @@ class RegisterScreen extends StatefulWidget {
 class _RegisterScreenState extends State<RegisterScreen> {
   int _currentStep = 0;
 
-  // Dynamic category data
+  // Category data
   List<Map<String, dynamic>> categoryData = [];
   bool isLoadingCategories = true;
-
-  // User selections
-  String? selectedCategory;
-  String? selectedSubcategory;
-  String? selectedStyle;
-  String? selectedPriceRange;
-  String? selectedShoppingPreference;
-  String? selectedRadius;
-
-  // Static lists
-  final List<String> styles = ["Casual", "Formal", "Streetwear", "Traditional"];
-  final List<String> priceRanges = ["Low", "Medium", "High", "Luxury"];
-  final List<String> shoppingPreferences = ["New", "Second-hand", "Both"];
-  final List<String> radii = ["2 km", "5 km", "10 km", "Citywide"];
+  List<String> selectedCategories = [];
 
   // Location
   String? latitude;
@@ -47,14 +34,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? email;
   String? password;
 
-  // BVN verification
+  // BVN
   bool _isBvnVerified = false;
   bool _isVerifyingBvn = false;
   final _bvnController = TextEditingController();
 
-  // Additional info from BVN
+  // BVN details
   String? dob;
   String? gender;
+  String? bvnEmail;
+  bool useBvnEmail = true; // default checked
 
   @override
   void initState() {
@@ -64,23 +53,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _fetchCategories() async {
     try {
-      final data = await CategoryService().getCategoriesWithSubcategories();
+      final data = await CategoryService().getCategories();
       setState(() {
         categoryData = data;
         isLoadingCategories = false;
       });
     } catch (e) {
       setState(() => isLoadingCategories = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error loading categories: $e")),
+      );
     }
   }
 
   Future<void> _getUserLocation() async {
-    setState(() {
-      _isGettingLocation = true;
-    });
+    setState(() => _isGettingLocation = true);
 
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -106,9 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       if (permission == LocationPermission.deniedForever) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Location permission permanently denied."),
-          ),
+          const SnackBar(content: Text("Location permanently denied.")),
         );
         setState(() => _isGettingLocation = false);
         return;
@@ -134,15 +119,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
         latitude = pos.latitude.toString();
         longitude = pos.longitude.toString();
         address = fullAddress;
-        locationController.text =
-            address ?? "${pos.latitude}, ${pos.longitude}";
+        locationController.text = fullAddress;
         _isGettingLocation = false;
       });
     } catch (e) {
       setState(() => _isGettingLocation = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error fetching location: $e")),
+      );
     }
   }
 
@@ -154,9 +138,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return;
     }
 
-    setState(() {
-      _isVerifyingBvn = true;
-    });
+    setState(() => _isVerifyingBvn = true);
 
     try {
       final result = await controller.verifyBVN(_bvnController.text);
@@ -165,7 +147,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         setState(() {
           _isBvnVerified = true;
           fullName = result["fullName"] ?? "";
-          email = result["email"] ?? "";
+          bvnEmail = result["email"] ?? "";
           dob = result["dob"] ?? "";
           gender = result["gender"] ?? "";
         });
@@ -174,42 +156,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.toString())),
+      );
     } finally {
-      setState(() {
-        _isVerifyingBvn = false;
-      });
+      setState(() => _isVerifyingBvn = false);
     }
   }
 
   void _nextStep(AuthController controller) async {
     if (_currentStep == 0) {
-      if (selectedCategory == null ||
-          selectedSubcategory == null ||
-          selectedStyle == null ||
-          selectedPriceRange == null ||
-          selectedShoppingPreference == null ||
-          selectedRadius == null) {
+      if (selectedCategories.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please complete all preferences")),
+          const SnackBar(content: Text("Please select at least one category")),
         );
         return;
       }
     } else if (_currentStep == 1) {
-      if (address == null || address!.isEmpty) {
+      if (locationController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please set your location")),
+          const SnackBar(content: Text("Please provide your location")),
         );
         return;
       }
     } else if (_currentStep == 2) {
       if (!_isBvnVerified) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Please verify your BVN before registering."),
-          ),
+          const SnackBar(content: Text("Verify BVN before registering.")),
         );
         return;
       }
@@ -220,17 +193,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         try {
           await controller.register(
             fullName: fullName!,
-            email: email!,
+            email: useBvnEmail ? (bvnEmail ?? "") : email!,
             password: password!,
             bvn: _bvnController.text.trim(),
-            category: [selectedCategory!],
-            style: [selectedStyle!],
-            priceRange: [selectedPriceRange!],
-            shoppingPreference: [selectedShoppingPreference!],
-            radius: [selectedRadius!],
+            category: selectedCategories,
+            style: [],
+            priceRange: [],
+            shoppingPreference: [],
+            radius: [],
             latitude: double.tryParse(latitude ?? ""),
             longitude: double.tryParse(longitude ?? ""),
-            address: address ?? '',
+            address: locationController.text,
             dob: dob ?? '',
             gender: gender ?? '',
           );
@@ -244,27 +217,24 @@ class _RegisterScreenState extends State<RegisterScreen> {
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         } catch (e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(e.toString())));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(e.toString())),
+          );
         }
         return;
       }
     }
 
-    setState(() {
-      _currentStep++;
-    });
+    setState(() => _currentStep++);
   }
 
   Widget _buildLogo() {
     return Column(
       children: [
-        const SizedBox(height: 20),
         Center(
-          child: Image.asset("images/Stitches Africa Logo-06.png", height: 80),
+          child: Image.asset("images/Stitches Africa Logo-08.png", height: 80),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 30),
       ],
     );
   }
@@ -274,218 +244,176 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    List<String> categoryList = categoryData
-        .map((c) => c["category"] as String)
-        .toList();
-    List<String> subcategoriesForSelected = selectedCategory != null
-        ? categoryData
-              .firstWhere(
-                (c) => c["category"] == selectedCategory,
-              )["subcategories"]
-              .cast<String>()
-        : [];
+    List<String> categoryList =
+        categoryData.map((c) => c["category"] as String).toList();
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildLogo(),
-          const Text(
-            "Choose your fashion preferences",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(
-              labelText: "Category",
-              border: OutlineInputBorder(),
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildLogo(),
+            const Text(
+              "Select your fashion categories",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            items: categoryList
-                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                .toList(),
-            value: selectedCategory,
-            onChanged: (val) {
-              setState(() {
-                selectedCategory = val;
-                selectedSubcategory = null;
-              });
-            },
-          ),
-          const SizedBox(height: 12),
-
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(
-              labelText: "Subcategory",
-              border: OutlineInputBorder(),
+            const SizedBox(height: 20),
+            ...categoryList.map(
+              (c) => CheckboxListTile(
+                title: Text(c),
+                value: selectedCategories.contains(c),
+                onChanged: (val) {
+                  setState(() {
+                    if (val == true) {
+                      selectedCategories.add(c);
+                    } else {
+                      selectedCategories.remove(c);
+                    }
+                  });
+                },
+              ),
             ),
-            items: subcategoriesForSelected
-                .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                .toList(),
-            value: selectedSubcategory,
-            onChanged: (val) => setState(() => selectedSubcategory = val),
-          ),
-          const SizedBox(height: 12),
-
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(
-              labelText: "Style",
-              border: OutlineInputBorder(),
-            ),
-            items: styles
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                .toList(),
-            value: selectedStyle,
-            onChanged: (val) => setState(() => selectedStyle = val),
-          ),
-          const SizedBox(height: 12),
-
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(
-              labelText: "Price Range",
-              border: OutlineInputBorder(),
-            ),
-            items: priceRanges
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                .toList(),
-            value: selectedPriceRange,
-            onChanged: (val) => setState(() => selectedPriceRange = val),
-          ),
-          const SizedBox(height: 12),
-
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(
-              labelText: "Shopping Preference",
-              border: OutlineInputBorder(),
-            ),
-            items: shoppingPreferences
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                .toList(),
-            value: selectedShoppingPreference,
-            onChanged: (val) =>
-                setState(() => selectedShoppingPreference = val),
-          ),
-          const SizedBox(height: 12),
-
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(
-              labelText: "Preferred Radius",
-              border: OutlineInputBorder(),
-            ),
-            items: radii
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                .toList(),
-            value: selectedRadius,
-            onChanged: (val) => setState(() => selectedRadius = val),
-          ),
-          const SizedBox(height: 40),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildLocationStep() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildLogo(),
-          const Text(
-            "Set your location",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 20),
-          TextField(
-            controller: locationController,
-            readOnly: true,
-            decoration: InputDecoration(
-              labelText: "Your location",
-              border: const OutlineInputBorder(),
-              suffixIcon: _isGettingLocation
-                  ? const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.my_location),
-                      onPressed: _getUserLocation,
-                    ),
+    return Center(
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            _buildLogo(),
+            const Text(
+              "Set your location",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-          ),
-          const SizedBox(height: 40),
-        ],
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 300,
+              child: TextField(
+                controller: locationController,
+                decoration: InputDecoration(
+                  labelText: "Your location",
+                  border: const OutlineInputBorder(),
+                  suffixIcon: _isGettingLocation
+                      ? const Padding(
+                          padding: EdgeInsets.all(8.0),
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : IconButton(
+                          icon: const Icon(Icons.my_location),
+                          onPressed: _getUserLocation,
+                        ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildFormStep(AuthController controller) {
-    return SingleChildScrollView(
-      child: Form(
-        key: _formKey,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildLogo(),
-            const Text(
-              "Create your account",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-
-            TextFormField(
-              controller: _bvnController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "BVN"),
-            ),
-            const SizedBox(height: 12),
-            ElevatedButton(
-              onPressed: _isVerifyingBvn ? null : () => _verifyBVN(controller),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.black,
-                minimumSize: const Size(double.infinity, 50),
-              ),
-              child: _isVerifyingBvn
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Text(
-                      "Verify BVN",
-                      style: TextStyle(color: Colors.white),
-                    ),
-            ),
-            const SizedBox(height: 20),
-
-            if (_isBvnVerified) ...[
-              TextFormField(
-                initialValue: fullName,
-                decoration: const InputDecoration(labelText: "Full Name"),
-                validator: (val) =>
-                    val!.isEmpty ? "Enter your full name" : null,
-                onSaved: (val) => fullName = val,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                initialValue: email,
-                decoration: const InputDecoration(labelText: "Email"),
-                validator: (val) =>
-                    val!.contains("@") ? null : "Enter a valid email",
-                onSaved: (val) => email = val,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                decoration: const InputDecoration(labelText: "Password"),
-                obscureText: true,
-                validator: (val) => val!.length < 6
-                    ? "Password must be at least 6 characters"
-                    : null,
-                onSaved: (val) => password = val,
+    return Center(
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              _buildLogo(),
+              const Text(
+                "Create your account",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-            ],
 
-            Center(
-              child: GestureDetector(
-                onTap: () {
-                  Navigator.pushNamed(context, '/login');
-                },
+              SizedBox(
+                width: 300,
+                child: TextFormField(
+                  controller: _bvnController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: "BVN"),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 300,
+                child: ElevatedButton(
+                  onPressed:
+                      _isVerifyingBvn ? null : () => _verifyBVN(controller),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: _isVerifyingBvn
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("Verify BVN",
+                          style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              if (_isBvnVerified) ...[
+                SizedBox(
+                  width: 300,
+                  child: TextFormField(
+                    initialValue: fullName,
+                    decoration: const InputDecoration(labelText: "Full Name"),
+                    validator: (val) =>
+                        val!.isEmpty ? "Enter your full name" : null,
+                    onSaved: (val) => fullName = val,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                CheckboxListTile(
+                  value: useBvnEmail,
+                  onChanged: (val) =>
+                      setState(() => useBvnEmail = val ?? true),
+                  title: const Text("Use BVN email"),
+                ),
+                if (!useBvnEmail)
+                  SizedBox(
+                    width: 300,
+                    child: TextFormField(
+                      decoration:
+                          const InputDecoration(labelText: "Preferred Email"),
+                      validator: (val) =>
+                          val!.contains("@") ? null : "Enter a valid email",
+                      onSaved: (val) => email = val,
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text("Using BVN Email: $bvnEmail"),
+                  ),
+                const SizedBox(height: 12),
+
+                SizedBox(
+                  width: 300,
+                  child: TextFormField(
+                    decoration: const InputDecoration(labelText: "Password"),
+                    obscureText: true,
+                    validator: (val) => val!.length < 6
+                        ? "Password must be at least 6 characters"
+                        : null,
+                    onSaved: (val) => password = val,
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/login'),
                 child: const Text(
                   "Already have an account? Sign in",
                   style: TextStyle(
@@ -494,9 +422,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   ),
                 ),
               ),
-            ),
-            const SizedBox(height: 40),
-          ],
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
@@ -517,29 +445,18 @@ class _RegisterScreenState extends State<RegisterScreen> {
           return Scaffold(
             appBar: AppBar(
               title: const Text("Register"),
+              centerTitle: true,
               leading: IconButton(
                 icon: const Icon(Icons.arrow_back),
-                onPressed: () {
-                  Navigator.pushReplacementNamed(context, "/home");
-                },
+                onPressed: () =>
+                    Navigator.pushReplacementNamed(context, "/home"),
               ),
               actions: [
                 TextButton.icon(
-                  onPressed: () {
-                    try {
-                      Navigator.pushNamed(
-                        context,
-                        '/login',
-                      ); // ✅ Go to login screen
-                    } catch (e) {
-                      print('Error:$e');
-                    }
-                  },
+                  onPressed: () => Navigator.pushNamed(context, '/login'),
                   icon: const Icon(Icons.person, color: Colors.black),
-                  label: const Text(
-                    "Sign In",
-                    style: TextStyle(color: Colors.black),
-                  ),
+                  label: const Text("Sign In",
+                      style: TextStyle(color: Colors.black)),
                 ),
               ],
             ),
@@ -557,7 +474,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   minimumSize: const Size(double.infinity, 50),
                 ),
                 onPressed: (_currentStep == 2 && !_isBvnVerified)
-                    ? null // Disable if BVN not verified
+                    ? null
                     : () => _nextStep(controller),
                 child: Text(
                   _currentStep == steps.length - 1 ? "Register" : "Next",

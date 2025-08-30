@@ -23,7 +23,6 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _testUserParsing(); // Test the User model parsing
     _loadUserProfile();
   }
 
@@ -34,7 +33,7 @@ class _ProfilePageState extends State<ProfilePage> {
         _error = null;
       });
 
-      // First try to load from API
+      // Try to load from API
       try {
         final user = await _userService.getProfile();
         if (kDebugMode) {
@@ -51,7 +50,6 @@ class _ProfilePageState extends State<ProfilePage> {
         if (kDebugMode) {
           print('API call failed: $e');
         }
-        // If API fails, try to load from cached data
       }
 
       // Fallback to cached user data
@@ -74,12 +72,11 @@ class _ProfilePageState extends State<ProfilePage> {
           if (kDebugMode) {
             print('Error parsing cached user data: $e');
           }
-          // Clear corrupted cached data
           await Prefs.remove('user');
         }
       }
 
-      // If no cached data, show error
+      // No cached data → error
       setState(() {
         _error =
             'Unable to load user profile. Please try logging out and back in.';
@@ -97,37 +94,7 @@ class _ProfilePageState extends State<ProfilePage> {
     setState(() {
       _user = updatedUser;
     });
-
-    // Update cached data
     await Prefs.setUserData(updatedUser.toJson());
-  }
-
-  // Test method to validate User model parsing
-  void _testUserParsing() {
-    try {
-      // Test with sample data that might come from API
-      final testData = {
-        "id": "test-id",
-        "fullName": "Test User",
-        "email": "test@example.com",
-        "category": "Fashion,Clothing", // String format
-        "style": ["Casual", "Formal"], // Array format
-        "priceRange": "Medium",
-        "latitude": "12.345",
-        "longitude": "67.890",
-      };
-
-      final user = User.fromJson(testData);
-      if (kDebugMode) {
-        print('Test user parsing successful: ${user.fullName}');
-        print('Category: ${user.category}');
-        print('Style: ${user.style}');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('Test user parsing failed: $e');
-      }
-    }
   }
 
   void showSignInSheet(BuildContext context) {
@@ -159,11 +126,11 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       trailing: showTrailing
           ? (trailing ??
-                const Icon(
-                  Icons.arrow_forward_ios,
-                  size: 18,
-                  color: Colors.grey,
-                ))
+              const Icon(
+                Icons.arrow_forward_ios,
+                size: 18,
+                color: Colors.grey,
+              ))
           : null,
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
@@ -172,7 +139,6 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _handleLogout() async {
     try {
-      // Show confirmation dialog
       final shouldLogout = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
@@ -193,10 +159,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
       if (shouldLogout != true) return;
 
-      // Call logout API
       await _userService.logout();
-
-      // Clear all local data
       await Prefs.clearAll();
 
       if (mounted) {
@@ -359,11 +322,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               fontSize: 20,
                             ),
                           ),
-                          // const SizedBox(height: 4),
-                          // Text(
-                          //   'ID ${_user!.id}',
-                          //   style: const TextStyle(fontWeight: FontWeight.w500),
-                          // ),
                           if (_user!.email.isNotEmpty) ...[
                             const SizedBox(height: 4),
                             Text(
@@ -371,16 +329,6 @@ class _ProfilePageState extends State<ProfilePage> {
                               style: const TextStyle(
                                 color: Colors.grey,
                                 fontSize: 14,
-                              ),
-                            ),
-                          ],
-                          if (_user!.dob != null && _user!.dob!.isNotEmpty) ...[
-                            const SizedBox(height: 4),
-                            Text(
-                              'DOB: ${_user!.dob}',
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontSize: 12,
                               ),
                             ),
                           ],
@@ -398,17 +346,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         ],
                       ),
                     ),
-                    // IconButton(
-                    //   onPressed: () {
-                    //     ProfileUpdateSheets.showPersonalInfoUpdateSheet(
-                    //       context,
-                    //       _user!.dob,
-                    //       _user!.gender,
-                    //       _updateUserData,
-                    //     );
-                    //   },
-                    //   icon: const Icon(Icons.edit),
-                    // ),
                   ],
                 ),
                 const SizedBox(height: 40),
@@ -423,18 +360,18 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 8),
                 _accountSettingItem(
-                  leadingIcon: Icons.person_outline,
-                  title: "Edit profile",
-                  onTap: () {
-                    ProfileUpdateSheets.showPersonalInfoUpdateSheet(
-                      context,
-                      _user!.dob,
-                      _user!.gender,
-                      _updateUserData,
-                    );
-                  },
-                  showTrailing: false,
-                ),
+  leadingIcon: Icons.person_outline,
+  title: "Edit profile",
+  onTap: () {
+    ProfileUpdateSheets.showPersonalInfoUpdateSheet(
+      context,
+      _user!.gender,
+      _user!,            // ✅ Added missing User argument
+      _updateUserData,
+    );
+  },
+  showTrailing: false,
+),
 
                 const Divider(),
                 _accountSettingItem(
@@ -463,59 +400,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 32),
 
-                // User Preferences Section
-                const Text(
-                  'Preferences',
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 24,
-                    color: Colors.black,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                // Style preference
-                _accountSettingItem(
-                  leadingIcon: Icons.style,
-                  title: _user!.style != null && _user!.style!.isNotEmpty
-                      ? "Style: ${_user!.style!.join(', ')}"
-                      : "Style: Not set",
-                  onTap: () {
-                    ProfileUpdateSheets.showStyleUpdateSheet(
-                      context,
-                      _user!.style,
-                      _updateUserData,
-                    );
-                  },
-                  trailing: const Icon(
-                    Icons.edit,
-                    size: 18,
-                    color: Colors.grey,
-                  ),
-                  showTrailing: true,
-                ),
-                const Divider(),
-                // Price range preference
-                _accountSettingItem(
-                  leadingIcon: Icons.attach_money,
-                  title:
-                      _user!.priceRange != null && _user!.priceRange!.isNotEmpty
-                      ? "Price Range: ${_user!.priceRange}"
-                      : "Price Range: Not set",
-                  onTap: () {
-                    ProfileUpdateSheets.showPriceRangeUpdateSheet(
-                      context,
-                      _user!.priceRange,
-                      _updateUserData,
-                    );
-                  },
-                  trailing: const Icon(
-                    Icons.edit,
-                    size: 18,
-                    color: Colors.grey,
-                  ),
-                  showTrailing: true,
-                ),
-                const Divider(),
                 if (_user!.address != null) ...[
                   _accountSettingItem(
                     leadingIcon: Icons.location_on,
@@ -527,7 +411,7 @@ class _ProfilePageState extends State<ProfilePage> {
                 ],
                 const SizedBox(
                   height: 100,
-                ), // Add bottom padding for refresh indicator
+                ),
               ],
             ),
           ),

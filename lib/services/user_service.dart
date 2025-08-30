@@ -31,14 +31,13 @@ class UserService {
       final data = json.decode(response.body);
       print('API response data: $data');
 
-      // Handle different response structures
       Map<String, dynamic> userData;
       if (data["user"] != null) {
         userData = data["user"];
       } else if (data["data"] != null) {
         userData = data["data"];
       } else {
-        userData = data; // Assume the entire response is user data
+        userData = data;
       }
 
       print('User data from API: $userData');
@@ -49,7 +48,7 @@ class UserService {
     }
   }
 
-  /// ✅ Update profile
+  /// ✅ Update profile (general info)
   Future<User?> updateProfile(Map<String, dynamic> profileData) async {
     final token = await _getToken();
     if (token == null) return null;
@@ -72,7 +71,7 @@ class UserService {
     }
   }
 
-  /// ✅ Update location
+  /// ✅ Update location only
   Future<User?> updateLocation(Map<String, dynamic> locationData) async {
     final token = await _getToken();
     if (token == null) return null;

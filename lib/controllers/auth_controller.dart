@@ -21,22 +21,16 @@ class AuthController with ChangeNotifier {
 
   /// Request Location Permission & Get Coordinates
   Future<void> _determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) throw Exception('Location services are disabled.');
 
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
-      throw Exception('Location services are disabled.');
-    }
-
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
         throw Exception('Location permissions are denied');
       }
     }
-
     if (permission == LocationPermission.deniedForever) {
       throw Exception('Location permissions are permanently denied.');
     }
@@ -49,50 +43,43 @@ class AuthController with ChangeNotifier {
     longitude = position.longitude;
 
     // Reverse geocode to get readable address
-    List<Placemark> placemarks = await placemarkFromCoordinates(
-      latitude!,
-      longitude!,
-    );
+    List<Placemark> placemarks =
+        await placemarkFromCoordinates(latitude!, longitude!);
     if (placemarks.isNotEmpty) {
       Placemark place = placemarks.first;
       address = "${place.locality}, ${place.country}";
     }
   }
 
+  /// Register User
   Future<Map<String, dynamic>?> register({
     required String fullName,
     required String email,
     required String password,
     required String bvn,
-    required String dob,
-    required String gender,
-    required List<String> category,
-    required List<String> style,
-    required List<String> priceRange,
-    required List<String> shoppingPreference,
-    required List<String> radius,
-    double? latitude,
-    double? longitude,
-    String? address,
+    required String phone,
+    String? category,
+    String? gender,
   }) async {
     try {
       _isLoading = true;
       notifyListeners();
+
+      // ensure location is set
+      if (latitude == null || longitude == null) {
+        await _determinePosition();
+      }
 
       final result = await _authService.registerUser(
         fullName: fullName,
         email: email,
         password: password,
         bvn: bvn,
+        phone: phone,
         category: category,
-        style: style,
-        priceRange: priceRange,
-        shoppingPreference: shoppingPreference,
-        radius: radius,
         latitude: latitude,
         longitude: longitude,
         address: address,
-        dob: dob,
         gender: gender,
       );
 
@@ -103,13 +90,49 @@ class AuthController with ChangeNotifier {
     }
   }
 
+  /// Register Vendor
+  Future<Map<String, dynamic>?> registerVendor({
+    required String fullName,
+    required String email,
+    required String password,
+    required String brandName,
+    required String phone,
+    String? logo,
+  }) async {
+    try {
+      _isLoading = true;
+      notifyListeners();
+
+      if (latitude == null || longitude == null) {
+        await _determinePosition();
+      }
+
+      final result = await _authService.registerVendor(
+        fullName: fullName,
+        email: email,
+        password: password,
+        brandName: brandName,
+        phone: phone,
+        logo: logo,
+        latitude: latitude,
+        longitude: longitude,
+        address: address,
+      );
+
+      return result;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// Verify BVN
   Future<Map<String, dynamic>?> verifyBVN(String bvn) async {
     try {
       _isLoading = true;
       notifyListeners();
 
-      final result = await _authService.verifyBVN(bvn);
-      return result;
+      return await _authService.verifyBVN(bvn);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -128,22 +151,17 @@ class AuthController with ChangeNotifier {
       token = result['token'];
       user = result['user'];
 
-      // Get and store user location
       await _determinePosition();
 
-      // Save token, user, and location to SharedPreferences
+      // Save token, user, and location
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', token ?? '');
-      await prefs.setString('user', user != null ? jsonEncode(user) : '');
+      await prefs.setString('user', jsonEncode(user ?? {}));
       if (latitude != null && longitude != null) {
         await prefs.setDouble('latitude', latitude!);
         await prefs.setDouble('longitude', longitude!);
         await prefs.setString('address', address ?? '');
       }
-
-      print('Login successful: $result');
-      print('Saved token: $token');
-      print('User Location: $latitude, $longitude ($address)');
     } catch (e) {
       error = e.toString();
       print('Login error: $error');
