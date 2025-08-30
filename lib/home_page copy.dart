@@ -33,7 +33,7 @@ class _HomePageState extends State<HomePage> {
   Future<void> _fetchCategories() async {
     try {
       setState(() => _isLoading = true);
-      final data = await _categoryService.getCategoriesWithSubcategories();
+      final data = await _categoryService.getCategories();
       setState(() {
         _categories = data;
         _isLoading = false;
@@ -68,7 +68,7 @@ class _HomePageState extends State<HomePage> {
       final result = await adService.getBrandsByLocation(latitude!, longitude!);
 
       setState(() {
-        brandList = result;
+        brandList = result.map((brand) => brand['name'] as String).toList();
       });
     } catch (e) {
       setState(() {
@@ -479,7 +479,7 @@ class _BrandListingsPageState extends State<BrandListingsPage> {
     final maxPrice = int.tryParse(maxPriceController.text) ?? 999999999;
 
     return listings.where((ad) {
-      if (selectedCategory != null && ad.category != selectedCategory) {
+      if (selectedCategory != null && ad.categoryName != selectedCategory) {
         return false;
       }
       if (selectedCondition != null && ad.title != selectedCondition) {
@@ -497,137 +497,145 @@ class _BrandListingsPageState extends State<BrandListingsPage> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : error != null
-              ? Center(child: Text("Error: $error"))
-              : listings.isEmpty
-                  ? const Center(child: Text("No listings found"))
-                  : Column(
-                      children: [
-                        // ---------- FILTERS ----------
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  decoration: const InputDecoration(
-                                      labelText: "Category"),
-                                  value: selectedCategory,
-                                  items: ["Men", "Women", "Kids"]
-                                      .map((c) => DropdownMenuItem(
-                                          value: c, child: Text(c)))
-                                      .toList(),
-                                  onChanged: (val) =>
-                                      setState(() => selectedCategory = val),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: DropdownButtonFormField<String>(
-                                  decoration: const InputDecoration(
-                                      labelText: "Condition"),
-                                  value: selectedCondition,
-                                  items: ["New", "Used"]
-                                      .map((c) => DropdownMenuItem(
-                                          value: c, child: Text(c)))
-                                      .toList(),
-                                  onChanged: (val) =>
-                                      setState(() => selectedCondition = val),
-                                ),
-                              ),
-                            ],
+          ? Center(child: Text("Error: $error"))
+          : listings.isEmpty
+          ? const Center(child: Text("No listings found"))
+          : Column(
+              children: [
+                // ---------- FILTERS ----------
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(
+                            labelText: "Category",
                           ),
+                          value: selectedCategory,
+                          items: ["Men", "Women", "Kids"]
+                              .map(
+                                (c) =>
+                                    DropdownMenuItem(value: c, child: Text(c)),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => selectedCategory = val),
                         ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextField(
-                                  controller: minPriceController,
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                      labelText: "Min Price"),
-                                  onChanged: (_) => setState(() {}),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: TextField(
-                                  controller: maxPriceController,
-                                  keyboardType: TextInputType.number,
-                                  decoration: const InputDecoration(
-                                      labelText: "Max Price"),
-                                  onChanged: (_) => setState(() {}),
-                                ),
-                              ),
-                            ],
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<String>(
+                          decoration: const InputDecoration(
+                            labelText: "Condition",
                           ),
+                          value: selectedCondition,
+                          items: ["New", "Used"]
+                              .map(
+                                (c) =>
+                                    DropdownMenuItem(value: c, child: Text(c)),
+                              )
+                              .toList(),
+                          onChanged: (val) =>
+                              setState(() => selectedCondition = val),
                         ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: minPriceController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: "Min Price",
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: maxPriceController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(
+                            labelText: "Max Price",
+                          ),
+                          onChanged: (_) => setState(() {}),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
 
-                        // ---------- PRODUCT GRID ----------
-                        Expanded(
-                          child: GridView.builder(
-                            padding: const EdgeInsets.all(10),
-                            gridDelegate:
-                                const SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: 2,
-                              childAspectRatio: 0.7,
-                              crossAxisSpacing: 10,
-                              mainAxisSpacing: 10,
-                            ),
-                            itemCount: filteredListings.length,
-                            itemBuilder: (context, index) {
-                              final ad = filteredListings[index];
-                              return GestureDetector(
-                                onTap: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (ctx) =>
-                                        ProductDetailPage(ad: ad),
-                                  ),
-                                ),
-                                child: Card(
-                                  elevation: 3,
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Expanded(
-                                        child: ad.images.isNotEmpty
-                                            ? Image.network(
-                                                ad.images.first,
-                                                fit: BoxFit.cover,
-                                                width: double.infinity,
-                                              )
-                                            : const Icon(
-                                                Icons.image_not_supported,
-                                                size: 80,
-                                              ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.all(8.0),
-                                        child: Text(
-                                          ad.title,
-                                          style: const TextStyle(
-                                              fontWeight: FontWeight.bold),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                            horizontal: 8.0),
-                                        child: Text("₦${ad.price}"),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              );
-                            },
+                // ---------- PRODUCT GRID ----------
+                Expanded(
+                  child: GridView.builder(
+                    padding: const EdgeInsets.all(10),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          childAspectRatio: 0.7,
+                          crossAxisSpacing: 10,
+                          mainAxisSpacing: 10,
+                        ),
+                    itemCount: filteredListings.length,
+                    itemBuilder: (context, index) {
+                      final ad = filteredListings[index];
+                      return GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (ctx) => ProductDetailPage(ad: ad),
                           ),
                         ),
-                      ],
-                    ),
+                        child: Card(
+                          elevation: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: ad.images.isNotEmpty
+                                    ? Image.network(
+                                        ad.images.first,
+                                        fit: BoxFit.cover,
+                                        width: double.infinity,
+                                      )
+                                    : const Icon(
+                                        Icons.image_not_supported,
+                                        size: 80,
+                                      ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  ad.title,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0,
+                                ),
+                                child: Text("₦${ad.price}"),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
     );
   }
 }
@@ -648,7 +656,8 @@ class ProductDetailPage extends StatelessWidget {
   // WhatsApp Vendor
   void _whatsappVendor(String phone, String message) async {
     final uri = Uri.parse(
-        "https://wa.me/$phone?text=${Uri.encodeComponent(message)}");
+      "https://wa.me/$phone?text=${Uri.encodeComponent(message)}",
+    );
     if (await canLaunchUrl(uri)) {
       await launchUrl(uri, mode: LaunchMode.externalApplication);
     }
@@ -690,7 +699,7 @@ class ProductDetailPage extends StatelessWidget {
                   Row(
                     children: [
                       Chip(
-                        label: Text(ad.category),
+                        label: Text(ad.categoryName),
                         backgroundColor: Colors.teal.shade50,
                       ),
                       const SizedBox(width: 8),
@@ -722,8 +731,10 @@ class ProductDetailPage extends StatelessWidget {
                         child: ElevatedButton.icon(
                           onPressed: () => _callVendor(ad.phone),
                           icon: const Icon(Icons.call, color: Colors.white),
-                          label: const Text("Call Vendor",
-                              style: TextStyle(color: Colors.white)),
+                          label: const Text(
+                            "Call Vendor",
+                            style: TextStyle(color: Colors.white),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.black,
                             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -740,10 +751,14 @@ class ProductDetailPage extends StatelessWidget {
                             ad.phone,
                             "Hello, I'm interested in your ${ad.title}",
                           ),
-                          icon: const FaIcon(FontAwesomeIcons.whatsapp,
-                              color: Colors.white),
-                          label: const Text("WhatsApp Vendor",
-                              style: TextStyle(color: Colors.white)),
+                          icon: const FaIcon(
+                            FontAwesomeIcons.whatsapp,
+                            color: Colors.white,
+                          ),
+                          label: const Text(
+                            "WhatsApp Vendor",
+                            style: TextStyle(color: Colors.white),
+                          ),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF25D366),
                             padding: const EdgeInsets.symmetric(vertical: 16),
@@ -759,7 +774,7 @@ class ProductDetailPage extends StatelessWidget {
                 ],
               ),
             ),
-          )
+          ),
         ],
       ),
     );

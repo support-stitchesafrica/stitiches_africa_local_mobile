@@ -1,3 +1,8 @@
+import 'package:flutter/material.dart';
+import 'package:stitches_africa_local/models/ad.dart';
+
+import 'home_page.dart';
+
 class ShopListingsPage extends StatelessWidget {
   final String storeName;
   final List<Ad> ads;
