@@ -33,6 +33,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? fullName;
   String? email;
   String? password;
+  String? phone;
 
   // BVN
   bool _isBvnVerified = false;
@@ -48,6 +49,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   @override
   void initState() {
     super.initState();
+    _currentStep = 0; // Ensure we start at step 0
     _fetchCategories();
   }
 
@@ -152,10 +154,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final result = await controller.verifyBVN(_bvnController.text);
 
       if (result != null) {
+        print("result: $result");
         setState(() {
           _isBvnVerified = true;
           fullName = result["fullName"] ?? "";
           bvnEmail = result["email"] ?? "";
+
           dob = result["dob"] ?? "";
           gender = result["gender"] ?? "";
         });
@@ -169,6 +173,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       setState(() => _isVerifyingBvn = false);
+    }
+  }
+
+  void _resetToStep(int step) {
+    if (step >= 0 && step <= 2) {
+      setState(() => _currentStep = step);
     }
   }
 
@@ -198,15 +208,47 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (_formKey.currentState!.validate()) {
         _formKey.currentState!.save();
 
+        // Additional validation for required fields
+        if (phone == null || phone!.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please enter your phone number")),
+          );
+          return;
+        }
+
+        // Validate location data
+        if (latitude == null || longitude == null || address == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please set your location in step 2")),
+          );
+          return;
+        }
+
         try {
+          // Debug: Print registration data
+          print("Registration data:");
+          print("fullName: $fullName");
+          print("email: ${useBvnEmail ? (bvnEmail ?? "") : email}");
+          print("password: ${password?.length} characters");
+          print("bvn: ${_bvnController.text.trim()}");
+          print("phone: $phone");
+          print("category: ${selectedCategories.join(", ")}");
+          print("gender: $gender");
+          print("latitude: $latitude");
+          print("longitude: $longitude");
+          print("address: $address");
+
           await controller.register(
             fullName: fullName!,
             email: useBvnEmail ? (bvnEmail ?? "") : email!,
             password: password!,
             bvn: _bvnController.text.trim(),
-            phone: "", // Add required phone parameter
+            phone: phone ?? "0000000000", // Use phone from form or fallback
             category: selectedCategories.join(", "), // Convert list to string
             gender: gender ?? '',
+            latitude: latitude != null ? double.parse(latitude!) : null,
+            longitude: longitude != null ? double.parse(longitude!) : null,
+            address: address,
           );
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -217,16 +259,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
             context,
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
-        } catch (e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(e.toString())));
+        } catch (e, stackTrace) {
+          // Print error and stack trace to console for debugging
+          print("Registration error: $e");
+          print("Stack trace: $stackTrace");
+
+          String errorMessage = "An error occurred during registration.\n";
+          errorMessage += "Error: ${e.toString()}\n";
+
+          // If the error is an Exception with a message, try to extract more info
+          if (e is Exception) {
+            errorMessage += "Exception Type: ${e.runtimeType}\n";
+          }
+
+          // Optionally, show part of the stack trace in the snackbar for more detail
+          final stackLines = stackTrace.toString().split('\n');
+          if (stackLines.isNotEmpty) {
+            errorMessage += "Stack: ${stackLines.first}\n";
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              duration: const Duration(seconds: 6),
+            ),
+          );
         }
         return;
       }
     }
 
-    setState(() => _currentStep++);
+    // Only increment if we're not at the last step
+    if (_currentStep < 2) {
+      setState(() => _currentStep++);
+    }
   }
 
   Widget _buildLogo() {
@@ -410,10 +476,40 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: TextFormField(
                     decoration: const InputDecoration(labelText: "Password"),
                     obscureText: true,
-                    validator: (val) => val!.length < 6
-                        ? "Password must be at least 6 characters"
-                        : null,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        print("Password validation failed: field is empty");
+                        return "Password is required";
+                      }
+                      if (val.length < 6) {
+                        print(
+                          "Password validation failed: less than 6 characters",
+                        );
+                        return "Password must be at least 6 characters";
+                      }
+                      return null;
+                    },
                     onSaved: (val) => password = val,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: 300,
+                  child: TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: "Phone Number",
+                    ),
+                    keyboardType: TextInputType.phone,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return "Phone number is required";
+                      }
+                      if (val.length < 10) {
+                        return "Phone number must be at least 10 digits";
+                      }
+                      return null;
+                    },
+                    onSaved: (val) => phone = val,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -473,7 +569,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
               padding: const EdgeInsets.all(20.0),
               child: controller.isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : steps[_currentStep],
+                  : _currentStep < steps.length
+                  ? steps[_currentStep]
+                  : const Center(child: Text("Invalid step")),
             ),
             bottomNavigationBar: Padding(
               padding: const EdgeInsets.all(20.0),

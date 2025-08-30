@@ -43,8 +43,10 @@ class AuthController with ChangeNotifier {
     longitude = position.longitude;
 
     // Reverse geocode to get readable address
-    List<Placemark> placemarks =
-        await placemarkFromCoordinates(latitude!, longitude!);
+    List<Placemark> placemarks = await placemarkFromCoordinates(
+      latitude!,
+      longitude!,
+    );
     if (placemarks.isNotEmpty) {
       Placemark place = placemarks.first;
       address = "${place.locality}, ${place.country}";
@@ -60,9 +62,9 @@ class AuthController with ChangeNotifier {
     required String phone,
     String? category,
     String? gender,
+    double? latitude,
+    double? longitude,
     String? address,
-    String? userType, double? latitude, double? longitude,
-
   }) async {
     try {
       _isLoading = true;
@@ -71,6 +73,10 @@ class AuthController with ChangeNotifier {
       // ensure location is set
       if (latitude == null || longitude == null) {
         await _determinePosition();
+        // Use the determined position if still null
+        latitude ??= this.latitude;
+        longitude ??= this.longitude;
+        address ??= this.address;
       }
 
       final result = await _authService.registerUser(
@@ -84,8 +90,7 @@ class AuthController with ChangeNotifier {
         longitude: longitude,
         address: address,
         gender: gender,
-        userType: "CUSTOMER", // <-- add this
-
+        userType: "CUSTOMER",
       );
 
       return result;
@@ -103,7 +108,11 @@ class AuthController with ChangeNotifier {
     required String brandName,
     required String phone,
     List<String>? category,
-    String? logo, double? latitude, double? longitude, String? address, required String userType,
+    String? logo,
+    double? latitude,
+    double? longitude,
+    String? address,
+    required String userType,
   }) async {
     try {
       _isLoading = true;

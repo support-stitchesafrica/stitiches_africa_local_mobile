@@ -21,28 +21,37 @@ class AuthService {
     final url = Uri.parse("$baseUrl/auth/register");
 
     final response = await http.post(
-  url,
-  headers: {"Content-Type": "application/json"},
-  body: jsonEncode({
-    "fullName": fullName,
-    "email": email,
-    "password": password,
-    "bvn": bvn,
-    "phone": phone,
-    "category": category,
-    "latitude": latitude,
-    "longitude": longitude,
-    "address": address,
-    "gender": gender,
-    "userType": "CUSTOMer", // <-- add this
-  }),
-);
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "fullName": fullName,
+        "email": email,
+        "password": password,
+        "bvn": bvn,
+        "phone": phone,
+        "category": category,
+        "latitude": latitude,
+        "longitude": longitude,
+        "address": address,
+        "gender": gender,
+        "userType": "CUSTOMER",
+      }),
+    );
 
     if (response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      final error = jsonDecode(response.body);
-      throw Exception(error["message"] ?? "Registration failed");
+      print("Registration failed with status: ${response.statusCode}");
+      print("Response body: ${response.body}");
+
+      try {
+        final error = jsonDecode(response.body);
+        throw Exception(error["message"] ?? "Registration failed");
+      } catch (e) {
+        throw Exception(
+          "Registration failed: ${response.statusCode} - ${response.body}",
+        );
+      }
     }
   }
 
@@ -62,24 +71,23 @@ class AuthService {
   }) async {
     final url = Uri.parse("$baseUrl/auth/register/vendor");
 
-   final response = await http.post(
-  url,
-  headers: {"Content-Type": "application/json"},
-  body: jsonEncode({
-    "fullName": fullName,
-    "email": email,
-    "password": password,
-    "brandName": brandName,
-    "phone": phone,
-    "logo": logo,
-    "latitude": latitude,
-    "longitude": longitude,
-    "address": address,
-    "userType": "VENDOR", // <-- add this
-    category: category,
-  }),
-);
-
+    final response = await http.post(
+      url,
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({
+        "fullName": fullName,
+        "email": email,
+        "password": password,
+        "brandName": brandName,
+        "phone": phone,
+        "logo": logo,
+        "latitude": latitude,
+        "longitude": longitude,
+        "address": address,
+        "userType": "VENDOR", // <-- add this
+        category: category,
+      }),
+    );
 
     if (response.statusCode == 201) {
       return jsonDecode(response.body);

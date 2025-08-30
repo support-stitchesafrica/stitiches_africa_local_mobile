@@ -76,9 +76,18 @@ class _SellFormScreenState extends State<SellFormScreen> {
         isLoadingCategories = false;
       });
     } catch (e) {
-      setState(() => isLoadingCategories = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
+      setState(() {
+        // Fallback categories if API fails
+        categoryData = [
+          {"id": "1", "categoryName": "BESPOKE"},
+          {"id": "2", "categoryName": "READY TO WEAR"},
+          {"id": "3", "categoryName": "FABRIC STORE OWNER"},
+        ];
+        isLoadingCategories = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
     }
   }
 
@@ -109,7 +118,8 @@ class _SellFormScreenState extends State<SellFormScreen> {
       if (permission == LocationPermission.deniedForever) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text("Location permission permanently denied.")),
+            content: Text("Location permission permanently denied."),
+          ),
         );
         setState(() => _isGettingLocation = false);
         return;
@@ -118,8 +128,10 @@ class _SellFormScreenState extends State<SellFormScreen> {
       Position pos = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high,
       );
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(pos.latitude, pos.longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        pos.latitude,
+        pos.longitude,
+      );
 
       String fullAddress = "";
       if (placemarks.isNotEmpty) {
@@ -138,15 +150,17 @@ class _SellFormScreenState extends State<SellFormScreen> {
       });
     } catch (e) {
       setState(() => _isGettingLocation = false);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
     }
   }
 
   Future<void> _pickImages() async {
     try {
-      final List<XFile>? pickedFiles =
-          await _picker.pickMultiImage(imageQuality: 80);
+      final List<XFile>? pickedFiles = await _picker.pickMultiImage(
+        imageQuality: 80,
+      );
       if (pickedFiles != null && pickedFiles.isNotEmpty) {
         setState(() {
           _selectedImages.addAll(pickedFiles.map((x) => File(x.path)));
@@ -158,7 +172,11 @@ class _SellFormScreenState extends State<SellFormScreen> {
   }
 
   bool _isStep1Valid() {
-    return selectedCategories.isNotEmpty && _selectedImages.isNotEmpty;
+    return selectedCategories.isNotEmpty &&
+        _selectedImages.isNotEmpty &&
+        latitude != null &&
+        longitude != null &&
+        address != null;
   }
 
   bool _isStep2Valid() {
@@ -207,8 +225,8 @@ class _SellFormScreenState extends State<SellFormScreen> {
         "phone": _phoneController.text,
         "state": _selectedState,
         "area": _selectedArea,
-        "latitude": latitude,
-        "longitude": longitude,
+        "latitude": latitude != null ? double.parse(latitude!) : null,
+        "longitude": longitude != null ? double.parse(longitude!) : null,
         "address": address,
         "promoType": promoType,
       }, _selectedImages);
@@ -259,12 +277,15 @@ class _SellFormScreenState extends State<SellFormScreen> {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                      content: Text("Payment successful, Ad posted!")),
+                    content: Text("Payment successful, Ad posted!"),
+                  ),
                 );
                 Navigator.pushNamed(context, "/home");
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("Payment failed: ${response.message}")),
+                  SnackBar(
+                    content: Text("Payment failed: ${response.message}"),
+                  ),
                 );
               }
             },
@@ -276,9 +297,9 @@ class _SellFormScreenState extends State<SellFormScreen> {
           );
         }
       } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
     }
   }
@@ -298,7 +319,10 @@ class _SellFormScreenState extends State<SellFormScreen> {
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                Image.asset("images/Stitches Africa Logo-08.png", height: 80), // ✅ Logo at top
+                Image.asset(
+                  "images/Stitches Africa Logo-08.png",
+                  height: 80,
+                ), // ✅ Logo at top
                 const SizedBox(height: 20),
                 Expanded(child: _currentStep == 0 ? _step1() : _step2()),
               ],
@@ -316,8 +340,10 @@ class _SellFormScreenState extends State<SellFormScreen> {
             backgroundColor: Colors.black,
             minimumSize: const Size.fromHeight(50),
           ),
-          child: Text(_currentStep == 0 ? "Next" : "Post Ad",
-              style: const TextStyle(color: Colors.white)),
+          child: Text(
+            _currentStep == 0 ? "Next" : "Post Ad",
+            style: const TextStyle(color: Colors.white),
+          ),
         ),
       ),
     );
@@ -333,7 +359,9 @@ class _SellFormScreenState extends State<SellFormScreen> {
             const Center(child: CircularProgressIndicator())
           else
             ...categoryData.map((c) {
-              final category = c["category"] as String;
+              final category = c["categoryName"]?.toString() ?? "";
+              if (category.isEmpty)
+                return const SizedBox.shrink(); // Skip empty categories
               final selected = selectedCategories.contains(category);
               return CheckboxListTile(
                 title: Text(category),
@@ -418,8 +446,11 @@ class _SellFormScreenState extends State<SellFormScreen> {
                             borderRadius: BorderRadius.circular(20),
                           ),
                           padding: const EdgeInsets.all(2),
-                          child: const Icon(Icons.close,
-                              size: 18, color: Colors.white),
+                          child: const Icon(
+                            Icons.close,
+                            size: 18,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -529,20 +560,28 @@ class _SellFormScreenState extends State<SellFormScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold, fontSize: 16)),
-                if (subtitle != null)
-                  Text(subtitle,
-                      style:
-                          const TextStyle(fontSize: 14, color: Colors.grey)),
-              ],
-            ),
-            Text(price,
-                style: const TextStyle(
+                Text(
+                  title,
+                  style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
-                    color: Colors.black)),
+                  ),
+                ),
+                if (subtitle != null)
+                  Text(
+                    subtitle,
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+              ],
+            ),
+            Text(
+              price,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+                color: Colors.black,
+              ),
+            ),
           ],
         ),
       ),

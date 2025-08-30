@@ -54,10 +54,18 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         isLoadingCategories = false;
       });
     } catch (e) {
-      setState(() => isLoadingCategories = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error loading categories: $e")),
-      );
+      setState(() {
+        // Fallback categories if API fails
+        categoryData = [
+          {"id": "1", "categoryName": "BESPOKE"},
+          {"id": "2", "categoryName": "READY TO WEAR"},
+          {"id": "3", "categoryName": "FABRIC STORE OWNER"},
+        ];
+        isLoadingCategories = false;
+      });
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
     }
   }
 
@@ -94,8 +102,10 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         desiredAccuracy: LocationAccuracy.high,
       );
 
-      List<Placemark> placemarks =
-          await placemarkFromCoordinates(pos.latitude, pos.longitude);
+      List<Placemark> placemarks = await placemarkFromCoordinates(
+        pos.latitude,
+        pos.longitude,
+      );
 
       String fullAddress = "";
       if (placemarks.isNotEmpty) {
@@ -114,9 +124,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       });
     } catch (e) {
       setState(() => _isGettingLocation = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error fetching location: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
     }
   }
 
@@ -132,9 +142,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   void _nextStep(AuthController controller) async {
     if (_currentStep == 0) {
       if (_logoFile == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please upload a logo")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Please upload a logo")));
         return;
       }
       if (brandName == null || brandName!.isEmpty) {
@@ -186,9 +196,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.toString())));
         }
         return;
       }
@@ -222,8 +232,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             width: 300,
             child: TextFormField(
               decoration: const InputDecoration(labelText: "Brand Name"),
-              validator: (val) =>
-                  val!.isEmpty ? "Enter your brand name" : null,
+              validator: (val) => val!.isEmpty ? "Enter your brand name" : null,
               onChanged: (val) => brandName = val,
             ),
           ),
@@ -238,9 +247,8 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
     }
 
     List<String> categoryList = categoryData
-        .map((c) => c["name"])
-        .where((name) => name != null)
-        .map((name) => name.toString())
+        .map((c) => c["categoryName"]?.toString() ?? "")
+        .where((name) => name.isNotEmpty)
         .toList();
 
     return Column(
@@ -248,8 +256,10 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       children: [
         Image.asset("images/Stitches Africa Logo-08.png", height: 140),
         const SizedBox(height: 20),
-        const Text("Select your category preferences",
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          "Select your category preferences",
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 20),
         Expanded(
           child: ListView(
@@ -280,8 +290,10 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         children: [
           Image.asset("images/Stitches Africa Logo-08.png", height: 140),
           const SizedBox(height: 20),
-          const Text("Set your location",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            "Set your location",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 20),
           SizedBox(
             width: 300,
@@ -315,13 +327,14 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
           children: [
             Image.asset("images/Stitches Africa Logo-08.png", height: 140),
             const SizedBox(height: 20),
-            const Text("Create your account",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const Text(
+              "Create your account",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 20),
             TextFormField(
               decoration: const InputDecoration(labelText: "Full Name"),
-              validator: (val) =>
-                  val!.isEmpty ? "Enter your full name" : null,
+              validator: (val) => val!.isEmpty ? "Enter your full name" : null,
               onSaved: (val) => fullName = val,
             ),
             const SizedBox(height: 12),
@@ -386,7 +399,8 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
               child: ElevatedButton(
                 onPressed: () => _nextStep(controller),
                 child: Text(
-                    _currentStep == steps.length - 1 ? "Register" : "Next"),
+                  _currentStep == steps.length - 1 ? "Register" : "Next",
+                ),
               ),
             ),
           );
