@@ -60,9 +60,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
     } catch (e) {
       setState(() => isLoadingCategories = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error loading categories: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
     }
   }
 
@@ -124,9 +124,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
     } catch (e) {
       setState(() => _isGettingLocation = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error fetching location: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
     }
   }
 
@@ -156,9 +156,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       setState(() => _isVerifyingBvn = false);
     }
@@ -196,15 +196,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
             email: useBvnEmail ? (bvnEmail ?? "") : email!,
             password: password!,
             bvn: _bvnController.text.trim(),
-            category: selectedCategories,
-            style: [],
-            priceRange: [],
-            shoppingPreference: [],
-            radius: [],
-            latitude: double.tryParse(latitude ?? ""),
-            longitude: double.tryParse(longitude ?? ""),
-            address: locationController.text,
-            dob: dob ?? '',
+            phone: "", // Add required phone parameter
+            category: selectedCategories.join(", "), // Convert list to string
             gender: gender ?? '',
           );
 
@@ -217,9 +210,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         } catch (e) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString())),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(e.toString())));
         }
         return;
       }
@@ -244,8 +237,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       return const Center(child: CircularProgressIndicator());
     }
 
-    List<String> categoryList =
-        categoryData.map((c) => c["category"] as String).toList();
+    List<String> categoryList = categoryData
+        .map((c) => c["category"] as String)
+        .toList();
 
     return Center(
       child: SingleChildScrollView(
@@ -347,16 +341,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
               SizedBox(
                 width: 300,
                 child: ElevatedButton(
-                  onPressed:
-                      _isVerifyingBvn ? null : () => _verifyBVN(controller),
+                  onPressed: _isVerifyingBvn
+                      ? null
+                      : () => _verifyBVN(controller),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     minimumSize: const Size(double.infinity, 50),
                   ),
                   child: _isVerifyingBvn
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Verify BVN",
-                          style: TextStyle(color: Colors.white)),
+                      : const Text(
+                          "Verify BVN",
+                          style: TextStyle(color: Colors.white),
+                        ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -376,16 +373,16 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
                 CheckboxListTile(
                   value: useBvnEmail,
-                  onChanged: (val) =>
-                      setState(() => useBvnEmail = val ?? true),
+                  onChanged: (val) => setState(() => useBvnEmail = val ?? true),
                   title: const Text("Use BVN email"),
                 ),
                 if (!useBvnEmail)
                   SizedBox(
                     width: 300,
                     child: TextFormField(
-                      decoration:
-                          const InputDecoration(labelText: "Preferred Email"),
+                      decoration: const InputDecoration(
+                        labelText: "Preferred Email",
+                      ),
                       validator: (val) =>
                           val!.contains("@") ? null : "Enter a valid email",
                       onSaved: (val) => email = val,
@@ -455,8 +452,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextButton.icon(
                   onPressed: () => Navigator.pushNamed(context, '/login'),
                   icon: const Icon(Icons.person, color: Colors.black),
-                  label: const Text("Sign In",
-                      style: TextStyle(color: Colors.black)),
+                  label: const Text(
+                    "Sign In",
+                    style: TextStyle(color: Colors.black),
+                  ),
                 ),
               ],
             ),

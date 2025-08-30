@@ -126,11 +126,11 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       trailing: showTrailing
           ? (trailing ??
-              const Icon(
-                Icons.arrow_forward_ios,
-                size: 18,
-                color: Colors.grey,
-              ))
+                const Icon(
+                  Icons.arrow_forward_ios,
+                  size: 18,
+                  color: Colors.grey,
+                ))
           : null,
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 0, vertical: 0),
@@ -360,18 +360,18 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 const SizedBox(height: 8),
                 _accountSettingItem(
-  leadingIcon: Icons.person_outline,
-  title: "Edit profile",
-  onTap: () {
-    ProfileUpdateSheets.showPersonalInfoUpdateSheet(
-      context,
-      _user!.gender,
-      _user!,            // ✅ Added missing User argument
-      _updateUserData,
-    );
-  },
-  showTrailing: false,
-),
+                  leadingIcon: Icons.person_outline,
+                  title: "Edit profile",
+                  onTap: () {
+                    ProfileUpdateSheets.showPersonalInfoUpdateSheet(
+                      context,
+                      null, // dob not available in User model
+                      _user!.gender,
+                      _updateUserData,
+                    );
+                  },
+                  showTrailing: false,
+                ),
 
                 const Divider(),
                 _accountSettingItem(
@@ -409,9 +409,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   const Divider(),
                 ],
-                const SizedBox(
-                  height: 100,
-                ),
+                const SizedBox(height: 100),
               ],
             ),
           ),

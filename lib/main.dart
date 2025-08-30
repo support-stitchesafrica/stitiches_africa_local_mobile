@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stitches_africa_local/utils/prefs.dart';
 
-// ✅ Correct import for pay_with_paystack
-import 'package:pay_with_paystack/pay_with_paystack.dart';
+// Paystack import (unused but kept for future use)
+// import 'package:pay_with_paystack/pay_with_paystack.dart';
 
 import 'controllers/auth_controller.dart';
 import 'fashion_page.dart';
@@ -15,7 +15,8 @@ import 'splash_screen.dart';
 import 'vendor_register_screen.dart';
 
 // ✅ Add your Paystack public key here
-const String paystackPublicKey = "pk_test_37eba43300c473e8c80690177c32daf9302f82e6";
+const String paystackPublicKey =
+    "pk_test_37eba43300c473e8c80690177c32daf9302f82e6";
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,9 +29,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider<AuthController>(
-          create: (_) => AuthController(),
-        ),
+        ChangeNotifierProvider<AuthController>(create: (_) => AuthController()),
       ],
       child: StitchesAfricaApp(
         initialRoute: initialRoute,
