@@ -7,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:stitches_africa_local/controllers/auth_controller.dart';
 import 'package:stitches_africa_local/login_screen.dart';
 import 'package:stitches_africa_local/services/category_service.dart';
-
 class VendorRegisterScreen extends StatefulWidget {
   const VendorRegisterScreen({super.key});
 
@@ -32,6 +31,16 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   bool _isGettingLocation = false;
   final locationController = TextEditingController();
 
+  // BVN
+  bool _isBvnVerified = false;
+  bool _isVerifyingBvn = false;
+  final _bvnController = TextEditingController();
+
+  String? dob;
+  String? gender;
+  String? bvnEmail;
+  bool useBvnEmail = true;
+
   // Form
   final _formKey = GlobalKey<FormState>();
   String? fullName;
@@ -55,7 +64,6 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       });
     } catch (e) {
       setState(() {
-        // Fallback categories if API fails
         categoryData = [
           {"id": "1", "categoryName": "BESPOKE"},
           {"id": "2", "categoryName": "READY TO WEAR"},
@@ -63,17 +71,14 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         ];
         isLoadingCategories = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error loading categories: $e")),
+      );
     }
   }
 
   Future<void> _getUserLocation() async {
-    setState(() {
-      _isGettingLocation = true;
-    });
-
+    setState(() => _isGettingLocation = true);
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
@@ -92,7 +97,6 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
           return;
         }
       }
-
       if (permission == LocationPermission.deniedForever) {
         setState(() => _isGettingLocation = false);
         return;
@@ -124,27 +128,61 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       });
     } catch (e) {
       setState(() => _isGettingLocation = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error fetching location: $e")),
+      );
     }
   }
 
   void _pickLogo() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      setState(() {
-        _logoFile = File(picked.path);
-      });
+      setState(() => _logoFile = File(picked.path));
+    }
+  }
+
+  Future<void> _verifyBVN(AuthController controller) async {
+    if (_bvnController.text.isEmpty || _bvnController.text.length != 11) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Enter a valid 11-digit BVN")),
+      );
+      return;
+    }
+
+    setState(() => _isVerifyingBvn = true);
+
+    try {
+      final result = await controller.verifyBVN(_bvnController.text);
+      if (result != null) {
+        setState(() {
+          _isBvnVerified = true;
+          fullName = result["fullName"] ?? "";
+          bvnEmail = result["email"] ?? "";
+
+          // default email comes from BVN
+          email = bvnEmail;
+
+          dob = result["dob"] ?? "";
+          gender = result["gender"] ?? "";
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("BVN verified successfully!")),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      setState(() => _isVerifyingBvn = false);
     }
   }
 
   void _nextStep(AuthController controller) async {
     if (_currentStep == 0) {
       if (_logoFile == null) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Please upload a logo")));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Please upload a logo")),
+        );
         return;
       }
       if (brandName == null || brandName!.isEmpty) {
@@ -168,23 +206,35 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         return;
       }
     } else if (_currentStep == 3) {
+      if (!_isBvnVerified) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Verify BVN before registering.")),
+        );
+        return;
+      }
+
       if (_formKey.currentState!.validate()) {
         _formKey.currentState!.save();
 
+        // 🔑 ensure email is set
+        if (useBvnEmail) {
+          email = bvnEmail;
+        }
+
         try {
-          // Send selected category names to backend
           await controller.registerVendor(
             fullName: fullName!,
             email: email!,
             password: password!,
             brandName: brandName!,
             phone: phone!,
+            bvn: _bvnController.text.trim(),
             logo: _logoFile?.path,
             userType: "VENDOR",
             latitude: latitude != null ? double.parse(latitude!) : null,
             longitude: longitude != null ? double.parse(longitude!) : null,
             address: address,
-            category: selectedCategories, // <-- changed here
+            category: selectedCategories,
           );
 
           ScaffoldMessenger.of(context).showSnackBar(
@@ -196,17 +246,14 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
         } catch (e) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(e.toString())));
+          ScaffoldMessenger.of(context)
+              .showSnackBar(SnackBar(content: Text(e.toString())));
         }
         return;
       }
     }
 
-    setState(() {
-      _currentStep++;
-    });
+    setState(() => _currentStep++);
   }
 
   Widget _buildLogoStep() {
@@ -321,47 +368,133 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
 
   Widget _buildFormStep(AuthController controller) {
     return Center(
-      child: Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Image.asset("images/Stitches Africa Logo-08.png", height: 140),
-            const SizedBox(height: 20),
-            const Text(
-              "Create your account",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 20),
-            TextFormField(
-              decoration: const InputDecoration(labelText: "Full Name"),
-              validator: (val) => val!.isEmpty ? "Enter your full name" : null,
-              onSaved: (val) => fullName = val,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              decoration: const InputDecoration(labelText: "Email"),
-              validator: (val) =>
-                  val!.contains("@") ? null : "Enter a valid email",
-              onSaved: (val) => email = val,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              decoration: const InputDecoration(labelText: "Password"),
-              obscureText: true,
-              validator: (val) => val!.length < 6
-                  ? "Password must be at least 6 characters"
-                  : null,
-              onSaved: (val) => password = val,
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              decoration: const InputDecoration(labelText: "Phone Number"),
-              keyboardType: TextInputType.phone,
-              validator: (val) =>
-                  val!.isEmpty ? "Enter your phone number" : null,
-              onSaved: (val) => phone = val,
-            ),
-          ],
+      child: SingleChildScrollView(
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              Image.asset("images/Stitches Africa Logo-08.png", height: 140),
+              const SizedBox(height: 20),
+              const Text("Create your account",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 20),
+
+              // BVN field
+              SizedBox(
+                width: 300,
+                child: TextFormField(
+                  controller: _bvnController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: "BVN"),
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: 300,
+                child: ElevatedButton(
+                  onPressed:
+                      _isVerifyingBvn ? null : () => _verifyBVN(controller),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.black,
+                    minimumSize: const Size(double.infinity, 50),
+                  ),
+                  child: _isVerifyingBvn
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : const Text("Verify BVN",
+                          style: TextStyle(color: Colors.white)),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              if (_isBvnVerified) ...[
+                SizedBox(
+                  width: 300,
+                  child: TextFormField(
+                    initialValue: fullName,
+                    decoration: const InputDecoration(labelText: "Full Name"),
+                    validator: (val) =>
+                        val!.isEmpty ? "Enter your full name" : null,
+                    onSaved: (val) => fullName = val,
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                CheckboxListTile(
+                  value: useBvnEmail,
+                  onChanged: (val) =>
+                      setState(() => useBvnEmail = val ?? true),
+                  title: const Text("Use BVN email"),
+                ),
+                if (!useBvnEmail)
+                  SizedBox(
+                    width: 300,
+                    child: TextFormField(
+                      decoration:
+                          const InputDecoration(labelText: "Preferred Email"),
+                      validator: (val) =>
+                          val!.contains("@") ? null : "Enter a valid email",
+                      onSaved: (val) => email = val,
+                    ),
+                  )
+                else
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Text("Using BVN Email: $bvnEmail"),
+                  ),
+
+                const SizedBox(height: 12),
+                // Password
+                SizedBox(
+                  width: 300,
+                  child: TextFormField(
+                    decoration:
+                        const InputDecoration(labelText: "Password"),
+                    obscureText: true,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) return "Password required";
+                      if (val.length < 6) {
+                        return "Password must be at least 6 characters";
+                      }
+                      return null;
+                    },
+                    onSaved: (val) => password = val,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                // Phone
+                SizedBox(
+                  width: 300,
+                  child: TextFormField(
+                    decoration:
+                        const InputDecoration(labelText: "Phone Number"),
+                    keyboardType: TextInputType.phone,
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return "Phone number is required";
+                      }
+                      if (val.length < 10) {
+                        return "Phone number must be at least 10 digits";
+                      }
+                      return null;
+                    },
+                    onSaved: (val) => phone = val,
+                  ),
+                ),
+              ],
+
+              const SizedBox(height: 20),
+              GestureDetector(
+                onTap: () => Navigator.pushNamed(context, '/login'),
+                child: const Text(
+                  "Already have an account? Sign in",
+                  style: TextStyle(
+                      color: Colors.blue,
+                      decoration: TextDecoration.underline),
+                ),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
         ),
       ),
     );
@@ -379,12 +512,8 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             _buildLocationStep(),
             _buildFormStep(controller),
           ];
-
           return Scaffold(
-            appBar: AppBar(
-              title: const Text("Vendor Register"),
-              centerTitle: true,
-            ),
+            appBar: AppBar(title: const Text("Vendor Register")),
             body: Padding(
               padding: const EdgeInsets.all(20.0),
               child: controller.isLoading
@@ -399,8 +528,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
               child: ElevatedButton(
                 onPressed: () => _nextStep(controller),
                 child: Text(
-                  _currentStep == steps.length - 1 ? "Register" : "Next",
-                ),
+                    _currentStep == steps.length - 1 ? "Register" : "Next"),
               ),
             ),
           );

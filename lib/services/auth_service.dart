@@ -66,6 +66,7 @@ class AuthService {
     String? logo, // optional, backend expects uploaded file
     double? latitude,
     double? longitude,
+    String? bvn,
     String? address,
     List<String>? category,
   }) async {
@@ -83,6 +84,7 @@ class AuthService {
         "logo": logo,
         "latitude": latitude,
         "longitude": longitude,
+        "bvn": bvn,
         "address": address,
         "userType": "VENDOR", // <-- add this
         category: category,

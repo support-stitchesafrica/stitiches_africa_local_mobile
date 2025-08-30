@@ -109,6 +109,7 @@ class AuthController with ChangeNotifier {
     required String phone,
     List<String>? category,
     String? logo,
+    String? bvn,
     double? latitude,
     double? longitude,
     String? address,
@@ -129,10 +130,11 @@ class AuthController with ChangeNotifier {
         brandName: brandName,
         phone: phone,
         logo: logo,
+        bvn: bvn,
         latitude: latitude,
         longitude: longitude,
         address: address,
-        category: category,
+        category: category ?? [],
         userType: "VENDOR", // <-- add this
       );
 
