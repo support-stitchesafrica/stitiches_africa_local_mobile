@@ -14,7 +14,7 @@ class AdService {
 
   /// Add an ad to favourites
   Future<Map<String, dynamic>> addFavouriteAd(String adId) async {
-    final url = Uri.parse('$baseUrl/favourite');
+    final url = Uri.parse('$baseUrl/favourite/favourite');
     final response = await http.post(
       url,
       headers: _headers,
@@ -31,7 +31,7 @@ class AdService {
 
   /// Get all favourite ads for the signed-in user
   Future<List<dynamic>> getFavouriteAds() async {
-    final url = Uri.parse('$baseUrl/favourites');
+    final url = Uri.parse('$baseUrl/favourite/favourites');
     final response = await http.get(url, headers: _headers);
 
     if (response.statusCode == 200) {
@@ -44,7 +44,7 @@ class AdService {
 
   /// Get all ads by a specific store (user)
   Future<List<dynamic>> getStoreListings(String storeUserId) async {
-    final url = Uri.parse('$baseUrl/store/$storeUserId/listings');
+    final url = Uri.parse('$baseUrl/favourite/store/$storeUserId/listings');
     final response = await http.get(url, headers: _headers);
 
     if (response.statusCode == 200) {
@@ -58,7 +58,7 @@ class AdService {
 
   /// Get listing by ID (with store info)
   Future<Map<String, dynamic>> getListingById(String id) async {
-    final url = Uri.parse('$baseUrl/listing/$id');
+    final url = Uri.parse('$baseUrl/favourite/listing/$id');
     final response = await http.get(url, headers: _headers);
 
     if (response.statusCode == 200) {
