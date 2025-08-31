@@ -54,7 +54,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _currentStep = 0; // Ensure we start at step 0
+    _currentStep = 0; 
     _fetchCategories();
   }
 
@@ -200,7 +200,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         );
         return;
       } else {
-        brandName = _brandNameController.text;
+        brandName = _brandNameController.text.trim(); // ✅ always set
       }
     }
 
@@ -239,7 +239,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             brandName: brandName!,
             phone: phone!,
             bvn: _bvnController.text.trim(),
-            logo: _logoFile?.path,
+            logo: _logoFile?.path, // ✅ path will be uploaded in AuthService
             latitude: latitude != null ? double.parse(latitude!) : null,
             longitude: longitude != null ? double.parse(longitude!) : null,
             address: address,
@@ -269,7 +269,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
     return Center(
       child: Column(
         children: [
-          Image.asset("images/Stitches Africa Logo-08.png", height: 140),
+          Image.asset("images/Stitches Africa Logo-06.png", height: 140),
           const SizedBox(height: 20),
           GestureDetector(
             onTap: _pickLogo,
@@ -290,7 +290,6 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
               controller: _brandNameController,
               decoration: const InputDecoration(labelText: "Brand Name"),
               validator: (val) => val!.isEmpty ? "Enter your brand name" : null,
-              onChanged: (val) => brandName = val,
             ),
           ),
         ],
@@ -311,7 +310,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Image.asset("images/Stitches Africa Logo-08.png", height: 140),
+        Image.asset("images/Stitches Africa Logo-06.png", height: 140),
         const SizedBox(height: 20),
         const Text(
           "Select your category preferences",
@@ -345,7 +344,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
     return Center(
       child: Column(
         children: [
-          Image.asset("images/Stitches Africa Logo-08.png", height: 140),
+          Image.asset("images/Stitches Africa Logo-06.png", height: 140),
           const SizedBox(height: 20),
           const Text(
             "Set your location",
@@ -383,7 +382,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
           key: _formKey,
           child: Column(
             children: [
-              Image.asset("images/Stitches Africa Logo-06.png", height: 80),
+              Image.asset("images/Stitches Africa Logo-06.png", height: 140),
               const SizedBox(height: 20),
               const Text(
                 "Create your account",
@@ -536,7 +535,25 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
           ];
 
           return Scaffold(
-            appBar: AppBar(title: const Text("Vendor Register")),
+            appBar: AppBar(
+              title: const Text("Register"),
+              centerTitle: true,
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () =>
+                    Navigator.pushReplacementNamed(context, "/home"),
+              ),
+              actions: [
+                TextButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/login'),
+                  icon: const Icon(Icons.person, color: Colors.black),
+                  label: const Text(
+                    "Sign In",
+                    style: TextStyle(color: Colors.black),
+                  ),
+                ),
+              ],
+            ),
             body: Padding(
               padding: const EdgeInsets.all(20.0),
               child: controller.isLoading

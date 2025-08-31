@@ -299,7 +299,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       children: [
         Center(
-          child: Image.asset("images/Stitches Africa Logo-06.png", height: 80),
+          child: Image.asset("images/Stitches Africa Logo-06.png", height: 140),
         ),
         const SizedBox(height: 30),
       ],
@@ -308,7 +308,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Widget _buildPreferencesStep() {
     if (isLoadingCategories) {
-      return const Center(child: CircularProgressIndicator());
+      return Center(
+        child: Image.asset(
+          "images/Stitches Africa Logo-06.png", // ✅ your logo
+          height: 120, // adjust size if needed
+        ),
+      );
     }
 
     List<String> categoryList = categoryData
@@ -371,9 +376,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   labelText: "Your location",
                   border: const OutlineInputBorder(),
                   suffixIcon: _isGettingLocation
-                      ? const Padding(
-                          padding: EdgeInsets.all(8.0),
-                          child: CircularProgressIndicator(strokeWidth: 2),
+                      ? Center(
+                          child: Image.asset(
+                            "images/Stitches Africa Logo-06.png", // ✅ your logo
+                            height: 120, // adjust size if needed
+                          ),
                         )
                       : IconButton(
                           icon: const Icon(Icons.my_location),

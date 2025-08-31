@@ -373,7 +373,12 @@ class _HomePageState extends State<HomePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: busy
-          ? const Center(child: CircularProgressIndicator())
+          ? Center(
+            child: Image.asset(
+              "images/Stitches Africa Logo-06.png", // ✅ your logo
+              height: 120, // adjust size if needed
+            ),
+          )
           : error != null
           ? Center(child: Text(error!))
           : CustomScrollView(

@@ -9,6 +9,7 @@ import 'package:stitches_africa_local/utils/prefs.dart';
 import 'controllers/auth_controller.dart';
 import 'fashion_page.dart';
 import 'login_screen.dart';
+import 'register_choice_screen.dart';
 import 'register_screen.dart';
 import 'sell_ad.dart';
 import 'splash_screen.dart';
@@ -80,6 +81,7 @@ class StitchesAfricaApp extends StatelessWidget {
         '/register_vendor': (context) => const VendorRegisterScreen(),
         '/sell': (context) => const SellFormScreen(),
         '/login': (context) => const LoginScreen(),
+        '/registerChoice': (context) => const RegisterChoiceScreen(),
       },
     );
   }

@@ -54,7 +54,7 @@ class _SplashScreenState extends State<SplashScreen> {
               child: Center(
                 child: Image.asset(
                   "images/Stitches Africa Logo-06.png",
-                  height: size.height * 0.1,
+                  height: 140,
                 ),
               ),
             ),
@@ -150,35 +150,29 @@ class _SplashScreenState extends State<SplashScreen> {
           ),
           if (isLast) ...[
             const SizedBox(height: 40),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.grey.shade500,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+
+            // ✅ Single Get Started button
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, "/register_vendor");
-                  },
-                  child: const Text("Seller Sign up"),
                 ),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 30, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                onPressed: () {
+                  Navigator.pushReplacementNamed(context, "/registerChoice");
+                },
+                child: const Text(
+                  "Get Started",
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.white,
                   ),
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, "/register");
-                  },
-                  child: const Text("Buyer sign up"),
                 ),
-              ],
+              ),
             ),
           ],
         ],

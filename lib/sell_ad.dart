@@ -40,7 +40,7 @@ class _SellFormScreenState extends State<SellFormScreen> {
   String? _selectedState;
   String? _selectedArea;
   List<String> areaList = [];
-
+String? selectedCategory;
   // Image picker
   final ImagePicker _picker = ImagePicker();
   List<File> _selectedImages = [];
@@ -192,10 +192,10 @@ class _SellFormScreenState extends State<SellFormScreen> {
   }
 
   bool _isStep1Valid() {
-    return selectedCategories.isNotEmpty &&
-        _selectedImages.isNotEmpty &&
-        (address != null && address!.isNotEmpty);
-  }
+  return selectedCategory != null &&
+      _selectedImages.isNotEmpty &&
+      (address != null && address!.isNotEmpty);
+}
 
   bool _isStep2Valid() {
     return _titleController.text.isNotEmpty &&
@@ -220,36 +220,35 @@ class _SellFormScreenState extends State<SellFormScreen> {
     }
   }
 
-  Future<void> _saveAd(String userId, String promoType) async {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final token = prefs.getString("token");
-      if (token == null) throw Exception("User not logged in");
+Future<void> _saveAd(String userId, String promoType) async {
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    final token = prefs.getString("token");
+    if (token == null) throw Exception("User not logged in");
 
-      final adService = AdService(
-        baseUrl: "https://stictches-africa-api-local.vercel.app/api",
-        token: token,
-      );
+    final adService = AdService(
+      baseUrl: "https://stictches-africa-api-local.vercel.app/api",
+      token: token,
+    );
 
-      await adService.createAd(
-        categoryName: selectedCategories.join(","),
-        promoType: promoType,
-        title: _titleController.text,
-        brand: _userBrand ?? "UNKNOWN",
-        gender: _genderController.text,
-        description: _descriptionController.text,
-        price: double.tryParse(_priceController.text) ?? 0.0,
-        phone: _phoneController.text,
-        latitude: latitude != null ? double.parse(latitude!) : null,
-        longitude: longitude != null ? double.parse(longitude!) : null,
-        address: address,
-        images: _selectedImages,
-      );
-    } catch (e) {
-      throw Exception("Failed to save ad: $e");
-    }
+    await adService.createAd(
+      categoryName: selectedCategory!, // ✅ single valid category
+      promoType: promoType,
+      title: _titleController.text,
+      brand: _userBrand ?? "UNKNOWN",
+      gender: _genderController.text,
+      description: _descriptionController.text,
+      price: double.tryParse(_priceController.text) ?? 0.0,
+      phone: _phoneController.text,
+      latitude: latitude != null ? double.parse(latitude!) : null,
+      longitude: longitude != null ? double.parse(longitude!) : null,
+      address: address,
+      images: _selectedImages,
+    );
+  } catch (e) {
+    throw Exception("Failed to save ad: $e");
   }
-
+}
   Future<void> _nextStep() async {
     if (_currentStep == 0 && _isStep1Valid()) {
       setState(() => _currentStep = 1);
@@ -337,7 +336,7 @@ class _SellFormScreenState extends State<SellFormScreen> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Image.asset(
-                    "images/Stitches Africa Logo-08.png",
+                    "images/Stitches Africa Logo-06.png",
                     height: 80,
                   ),
                   const SizedBox(height: 20),
@@ -368,124 +367,119 @@ class _SellFormScreenState extends State<SellFormScreen> {
   }
 
   // --- Step 1 ---
-  Widget _step1() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        _label("Select Categories*"),
-        if (isLoadingCategories)
-          const Center(child: CircularProgressIndicator())
-        else
-          ...categoryData.map((c) {
-            final category = c["categoryName"]?.toString() ?? "";
-            if (category.isEmpty) return const SizedBox.shrink();
-            final selected = selectedCategories.contains(category);
-            return CheckboxListTile(
-              title: Text(category),
-              value: selected,
-              onChanged: (val) {
-                setState(() {
-                  if (val == true) {
-                    selectedCategories.add(category);
-                  } else {
-                    selectedCategories.remove(category);
-                  }
-                });
-              },
-            );
-          }),
-        const SizedBox(height: 12),
-        TextField(
-          controller: locationController,
-          readOnly: false,
-          onChanged: _onLocationChanged,
-          decoration: InputDecoration(
-            labelText: "Your location",
-            border: const OutlineInputBorder(),
-            suffixIcon: _isGettingLocation
-                ? const Padding(
-                    padding: EdgeInsets.all(8.0),
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : IconButton(
-                    icon: const Icon(Icons.my_location),
-                    onPressed: _getUserLocation,
-                  ),
+ Widget _step1() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.center,
+    children: [
+      _label("Select Category*"),
+      if (isLoadingCategories)
+        const Center(child: CircularProgressIndicator())
+      else
+        ...categoryData.map((c) {
+          final category = c["categoryName"]?.toString() ?? "";
+          if (category.isEmpty) return const SizedBox.shrink();
+          return RadioListTile<String>(
+            title: Text(category),
+            value: category,
+            groupValue: selectedCategory,
+            onChanged: (val) {
+              setState(() {
+                selectedCategory = val;
+              });
+            },
+          );
+        }),
+      const SizedBox(height: 12),
+      TextField(
+        controller: locationController,
+        readOnly: false,
+        onChanged: _onLocationChanged,
+        decoration: InputDecoration(
+          labelText: "Your location",
+          border: const OutlineInputBorder(),
+          suffixIcon: _isGettingLocation
+              ? const Padding(
+                  padding: EdgeInsets.all(8.0),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.my_location),
+                  onPressed: _getUserLocation,
+                ),
+        ),
+      ),
+      const SizedBox(height: 16),
+      _label("Add Photos*"),
+      InkWell(
+        onTap: _pickImages,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            children: const [
+              Icon(Icons.image, color: Colors.grey),
+              SizedBox(width: 8),
+              Text("Tap to select images"),
+            ],
           ),
         ),
-        const SizedBox(height: 16),
-        _label("Add Photos*"),
-        InkWell(
-          onTap: _pickImages,
-          child: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Row(
-              children: const [
-                Icon(Icons.image, color: Colors.grey),
-                SizedBox(width: 8),
-                Text("Tap to select images"),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        if (_selectedImages.isNotEmpty)
-          SizedBox(
-            height: 100,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemBuilder: (context, index) => Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.file(
-                      _selectedImages[index],
-                      width: 100,
-                      height: 100,
-                      fit: BoxFit.cover,
-                    ),
+      ),
+      const SizedBox(height: 8),
+      if (_selectedImages.isNotEmpty)
+        SizedBox(
+          height: 100,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemBuilder: (context, index) => Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.file(
+                    _selectedImages[index],
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
                   ),
-                  Positioned(
-                    right: 0,
-                    top: 0,
-                    child: GestureDetector(
-                      onTap: () {
-                        setState(() {
-                          _selectedImages.removeAt(index);
-                        });
-                      },
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: Colors.black54,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: const EdgeInsets.all(2),
-                        child: const Icon(
-                          Icons.close,
-                          size: 18,
-                          color: Colors.white,
-                        ),
+                ),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _selectedImages.removeAt(index);
+                      });
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black54,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: const Icon(
+                        Icons.close,
+                        size: 18,
+                        color: Colors.white,
                       ),
                     ),
                   ),
-                ],
-              ),
-              separatorBuilder: (_, __) => const SizedBox(width: 8),
-              itemCount: _selectedImages.length,
+                ),
+              ],
             ),
+            separatorBuilder: (_, __) => const SizedBox(width: 8),
+            itemCount: _selectedImages.length,
           ),
-      ],
-    );
-  }
-
+        ),
+    ],
+  );
+}
   // --- Step 2 ---
   Widget _step2() {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _label("Title*"),
         _inputField(_titleController),

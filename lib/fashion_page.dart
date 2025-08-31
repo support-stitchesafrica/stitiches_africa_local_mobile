@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:stitches_africa_local/profile_page.dart';
-import 'package:stitches_africa_local/register_screen.dart';
+import 'package:stitches_africa_local/login_screen.dart'; // <-- import your Login screen
 import 'package:stitches_africa_local/featured_screen.dart';
 import 'package:stitches_africa_local/utils/prefs.dart';
 import 'home_page.dart'; // Import HomePage from its own file
@@ -13,28 +13,18 @@ class FashionPage extends StatefulWidget {
 }
 
 class _FashionPageState extends State<FashionPage> {
-  final t = Prefs.token;
+  int _currentIndex = 0;
+
   String get profileOrSignIn {
-    if (t == null || t!.isEmpty) {
+    final t = Prefs.token;
+    if (t == null || t.isEmpty) {
       return "Sign in";
     } else {
       return "Profile";
     }
   }
 
-  int _currentIndex = 0;
-
-  final List<Widget> _pages = [
-    const HomePage(),
-    const FeaturedAdsPage(),
-    ProfilePage(), // Placeholder for Sign In bottom sheet
-  ];
-
   void _onNavTap(int index) {
-    // if (index == 3) {
-    //   _showSignInSheet();
-    //   return;
-    // }
     setState(() {
       _currentIndex = index;
     });
@@ -42,6 +32,17 @@ class _FashionPageState extends State<FashionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final token = Prefs.token;
+
+    // build pages dynamically based on token
+    final List<Widget> pages = [
+      const HomePage(),
+      const FeaturedAdsPage(),
+      (token == null || token.isEmpty)
+          ? const LoginScreen() // <-- show Login when not signed in
+          : ProfilePage(),       // <-- show Profile when signed in
+    ];
+
     return SafeArea(
       child: Scaffold(
         appBar: PreferredSize(
@@ -51,7 +52,7 @@ class _FashionPageState extends State<FashionPage> {
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
-                Image.asset("images/Stitches Africa Logo-06.png", height: 42),
+                Image.asset("images/Stitches Africa Logo-06.png", height: 80),
                 const SizedBox(width: 3),
                 ShaderMask(
                   shaderCallback: (bounds) => const LinearGradient(
@@ -96,7 +97,7 @@ class _FashionPageState extends State<FashionPage> {
             ),
           ),
         ),
-        body: _pages[_currentIndex],
+        body: pages[_currentIndex],
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
             color: Colors.white,

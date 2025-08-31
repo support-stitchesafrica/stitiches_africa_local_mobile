@@ -205,14 +205,19 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircularProgressIndicator(),
-              SizedBox(height: 16),
-              Text('Loading profile...'),
+           Center(
+            child: Image.asset(
+              "images/Stitches Africa Logo-06.png", // ✅ your logo
+              height: 120, // adjust size if needed
+            ),
+          ),
+          const SizedBox(height: 16),
+          const Text('Loading profile...'),
             ],
           ),
         ),

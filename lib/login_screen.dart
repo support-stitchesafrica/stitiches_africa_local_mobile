@@ -3,10 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:stitches_africa_local/fashion_page.dart';
-import 'package:stitches_africa_local/home_page.dart';
 import 'package:stitches_africa_local/models/user_model.dart';
+import 'package:stitches_africa_local/register_choice_screen.dart';
 import '../controllers/auth_controller.dart';
-import 'register_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -99,7 +98,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   Center(
                     child: Image.asset(
                       "images/Stitches Africa Logo-06.png",
-                      height: 80,
+                      height: 140,
                     ),
                   ),
                   const SizedBox(height: 20),
@@ -151,7 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => const RegisterScreen(),
+                            builder: (_) => const RegisterChoiceScreen(),
                           ),
                         );
                       },
