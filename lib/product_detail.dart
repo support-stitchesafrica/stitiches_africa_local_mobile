@@ -289,28 +289,31 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                     ),
                   ),
                   const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Chip(
-                        label: Text(ad.categoryName),
-                        backgroundColor: Colors.teal.shade50,
-                        side: BorderSide.none,
-                      ),
-                      const SizedBox(width: 8),
-                      Chip(
-                        label: Text(ad.brand),
-                        backgroundColor: Colors.orange.shade50,
-                        side: BorderSide.none,
-                      ),
-                      if ((ad.promoType ?? '').isNotEmpty) ...[
-                        const SizedBox(width: 8),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
                         Chip(
-                          label: Text(ad.promoType!),
-                          backgroundColor: Colors.purple.shade50,
+                          label: Text(ad.categoryName),
+                          backgroundColor: Colors.teal.shade50,
                           side: BorderSide.none,
                         ),
+                        const SizedBox(width: 8),
+                        Chip(
+                          label: Text(ad.brand),
+                          backgroundColor: Colors.orange.shade50,
+                          side: BorderSide.none,
+                        ),
+                        if ((ad.promoType ?? '').isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Chip(
+                            label: Text(ad.promoType!),
+                            backgroundColor: Colors.purple.shade50,
+                            side: BorderSide.none,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                   const SizedBox(height: 12),
                   Text(
