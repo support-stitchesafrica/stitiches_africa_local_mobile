@@ -315,7 +315,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 11),
                   Text(
                     "₦${_formatMoney(ad.price)}",
                     style: const TextStyle(
