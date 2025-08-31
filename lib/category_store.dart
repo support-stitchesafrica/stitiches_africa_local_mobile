@@ -19,7 +19,7 @@ class CategoryStoresPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("$category Stores"),
+        title: Text("$category Stores (5 km)"),
         backgroundColor: Colors.black87,
         foregroundColor: Colors.white,
       ),
