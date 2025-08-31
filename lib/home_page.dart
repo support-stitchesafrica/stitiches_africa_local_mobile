@@ -46,7 +46,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   void dispose() {
-    // Clean up any resources if needed
     super.dispose();
   }
 
@@ -64,7 +63,33 @@ class _HomePageState extends State<HomePage> {
         baseUrl: "https://stictches-africa-api-local.vercel.app/api",
         token: token,
       );
-      await _determineAndReverseGeocode();
+
+      // ✅ check if user saved manual location
+      final prefs = await SharedPreferences.getInstance();
+      final savedLat = prefs.getDouble("manual_lat");
+      final savedLng = prefs.getDouble("manual_lng");
+      final savedAddress = prefs.getString("manual_address");
+
+      if (savedLat != null && savedLng != null && savedAddress != null) {
+        setState(() {
+          _position = Position(
+            latitude: savedLat,
+            longitude: savedLng,
+            timestamp: DateTime.now(),
+            accuracy: 1,
+            altitude: 0,
+            altitudeAccuracy: 0, // ✅ added
+            heading: 0,
+            headingAccuracy: 0,  // ✅ added
+            speed: 0,
+            speedAccuracy: 0,
+          );
+          _address = savedAddress;
+        });
+      } else {
+        await _determineAndReverseGeocode();
+      }
+
       await _fetchAdsByLocation();
     } catch (e) {
       if (mounted) {
@@ -132,6 +157,12 @@ class _HomePageState extends State<HomePage> {
           _locBusy = false;
         });
       }
+
+      // clear manual preference since we used GPS
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove("manual_lat");
+      await prefs.remove("manual_lng");
+      await prefs.remove("manual_address");
     } catch (e) {
       if (mounted) {
         setState(() => _locBusy = false);
@@ -212,9 +243,117 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  Future<void> _enterLocationManually() async {
+    final controller = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Enter Location"),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: "Type city, street, or area",
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final query = controller.text.trim();
+              if (query.isEmpty) return;
+
+              try {
+                final locations = await locationFromAddress(query);
+                if (locations.isNotEmpty) {
+                  final loc = locations.first;
+
+                  final placemarks = await placemarkFromCoordinates(
+                    loc.latitude,
+                    loc.longitude,
+                  );
+
+                  String fullAddress = query;
+                  if (placemarks.isNotEmpty) {
+                    final p = placemarks.first;
+                    fullAddress =
+                        "${p.street}, ${p.locality}, ${p.administrativeArea}, ${p.country}";
+                  }
+
+                  if (mounted) {
+                    setState(() {
+                      _position = Position(
+                        latitude: loc.latitude,
+                        longitude: loc.longitude,
+                        timestamp: DateTime.now(),
+                        accuracy: 1,
+                        altitude: 0,
+                        altitudeAccuracy: 0, // ✅ added
+                        heading: 0,
+                        headingAccuracy: 0,  // ✅ added
+                        speed: 0,
+                        speedAccuracy: 0,
+                      );
+                      _address = fullAddress;
+                    });
+
+                    // save manual choice
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setDouble("manual_lat", loc.latitude);
+                    await prefs.setDouble("manual_lng", loc.longitude);
+                    await prefs.setString("manual_address", fullAddress);
+
+                    await _fetchAdsByLocation();
+                  }
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text("Failed to find location: $e")),
+                  );
+                }
+              }
+
+              Navigator.pop(context);
+            },
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _refreshLocationAndStores() async {
-    await _determineAndReverseGeocode();
-    await _fetchAdsByLocation();
+    final action = await showModalBottomSheet<String>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.my_location),
+              title: const Text("Use Current Location"),
+              onTap: () => Navigator.pop(context, "current"),
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit_location_alt),
+              title: const Text("Enter Location Manually"),
+              onTap: () => Navigator.pop(context, "manual"),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (action == "current") {
+      await _determineAndReverseGeocode();
+      await _fetchAdsByLocation();
+    } else if (action == "manual") {
+      await _enterLocationManually();
+    }
   }
 
   List<String> _storesForCategory(String category) {
@@ -238,208 +377,212 @@ class _HomePageState extends State<HomePage> {
       body: busy
           ? const Center(child: CircularProgressIndicator())
           : error != null
-          ? Center(child: Text(error!))
-          : CustomScrollView(
-              slivers: [
-                // HEADER
-                SliverToBoxAdapter(
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    color: Colors.black,
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: GestureDetector(
-                            onTap: _refreshLocationAndStores,
-                            child: Container(
-                              height: 44,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                              ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Icon(
-                                    Icons.my_location,
-                                    color: Colors.black,
+              ? Center(child: Text(error!))
+              : CustomScrollView(
+                  slivers: [
+                    // HEADER
+                    SliverToBoxAdapter(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        color: Colors.black,
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: _refreshLocationAndStores,
+                                child: Container(
+                                  height: 44,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
                                   ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      _address,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      const Icon(
+                                        Icons.my_location,
                                         color: Colors.black,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _address,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            color: Colors.black,
+                                            fontSize: 12.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Icon(
+                                        Icons.edit_location_alt,
+                                        color: Colors.black54,
+                                        size: 18,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Container(
+                                height: 44,
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _selectedNearbyStore,
+                                    isExpanded: true,
+                                    icon: const Icon(
+                                      Icons.expand_more,
+                                      color: Colors.black,
+                                    ),
+                                    hint: const Text(
+                                      "Nearby stores",
+                                      style: TextStyle(
+                                        color: Colors.black54,
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
+                                    style: const TextStyle(
+                                      color: Colors.black,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    items: _nearbyStores
+                                        .map(
+                                          (store) => DropdownMenuItem(
+                                            value: store,
+                                            child: Text(
+                                              store,
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (val) {
+                                      setState(
+                                          () => _selectedNearbyStore = val);
+                                      if (val != null) {
+                                        final ads = _adsForStore(val);
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => ShopListingsPage(
+                                              storeName: val,
+                                              ads: uniqueAdsByTitleAndImages(
+                                                ads,
+                                              ), // ✅ use helper
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    },
                                   ),
-                                  const SizedBox(width: 6),
-                                  const Icon(
-                                    Icons.refresh,
-                                    color: Colors.black54,
-                                    size: 18,
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Container(
-                            height: 44,
-                            padding: const EdgeInsets.symmetric(horizontal: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _selectedNearbyStore,
-                                isExpanded: true,
-                                icon: const Icon(
-                                  Icons.expand_more,
-                                  color: Colors.black,
-                                ),
-                                hint: const Text(
-                                  "Nearby stores",
-                                  style: TextStyle(
-                                    color: Colors.black54,
-                                    fontSize: 12.5,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                                style: const TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                items: _nearbyStores
-                                    .map(
-                                      (store) => DropdownMenuItem(
-                                        value: store,
-                                        child: Text(
-                                          store,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  setState(() => _selectedNearbyStore = val);
-                                  if (val != null) {
-                                    final ads = _adsForStore(val);
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => ShopListingsPage(
-                                          storeName: val,
-                                          ads: uniqueAdsByTitleAndImages(
-                                            ads,
-                                          ), // ✅ use helper
-                                        ),
-                                      ),
-                                    );
-                                  }
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-
-                // CATEGORIES
-                const SliverToBoxAdapter(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    child: Text(
-                      "Categories",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: SizedBox(
-                    height: 100,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      itemCount: backendCategories.length,
-                      itemBuilder: (context, index) {
-                        final category = backendCategories[index];
-                        final color = _getColorForCategory(category);
-                        final icon = _getIconForCategory(category);
-                        return GestureDetector(
-                          onTap: () {
-                            final stores = _storesForCategory(category);
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => CategoryStoresPage(
-                                  category: category,
-                                  stores: stores,
-                                  adsResolver: (store) => _adsForStore(store),
+
+                    // CATEGORIES
+                    const SliverToBoxAdapter(
+                      child: Padding(
+                        padding:
+                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        child: Text(
+                          "Categories",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    SliverToBoxAdapter(
+                      child: SizedBox(
+                        height: 100,
+                        child: ListView.builder(
+                          scrollDirection: Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          itemCount: backendCategories.length,
+                          itemBuilder: (context, index) {
+                            final category = backendCategories[index];
+                            final color = _getColorForCategory(category);
+                            final icon = _getIconForCategory(category);
+                            return GestureDetector(
+                              onTap: () {
+                                final stores = _storesForCategory(category);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => CategoryStoresPage(
+                                      category: category,
+                                      stores: stores,
+                                      adsResolver: (store) =>
+                                          _adsForStore(store),
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                width: 110,
+                                margin: const EdgeInsets.only(right: 12),
+                                decoration: BoxDecoration(
+                                  color: Colors.grey.shade200,
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    CircleAvatar(
+                                      backgroundColor: color,
+                                      radius: 22,
+                                      child: Icon(
+                                        icon,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                      ),
+                                      child: Text(
+                                        category,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        maxLines: 2,
+                                        textAlign: TextAlign.center,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
                             );
                           },
-                          child: Container(
-                            width: 110,
-                            margin: const EdgeInsets.only(right: 12),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade200,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                CircleAvatar(
-                                  backgroundColor: color,
-                                  radius: 22,
-                                  child: Icon(
-                                    icon,
-                                    color: Colors.white,
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 6,
-                                  ),
-                                  child: Text(
-                                    category,
-                                    style: const TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    maxLines: 2,
-                                    textAlign: TextAlign.center,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 ),
-              ],
-            ),
     );
   }
 }
