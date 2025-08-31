@@ -48,37 +48,60 @@ class AdService {
   }
 
   /// Create ad
-  Future<Ad> createAd(Map<String, dynamic> fields, List<File> images) async {
-    if (token == null) throw Exception("User not logged in");
+ Future<Ad> createAd({
+  required String categoryName,
+  String? promoType,
+  required String title,
+  required String brand,
+  String? gender,
+  required String description,
+  required double price,
+  required String phone,
+  double? latitude,
+  double? longitude,
+  String? address,
+  required List<File> images,
+}) async {
+  if (token == null) throw Exception("User not logged in");
 
-    var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/sell"));
-    request.headers['Authorization'] = 'Bearer $token';
+  var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/sell"));
+  request.headers['Authorization'] = 'Bearer $token';
 
-    // add fields
-    fields.forEach((key, value) {
-      if (value != null) request.fields[key] = value.toString();
-    });
+  // Add fields
+  request.fields.addAll({
+    "categoryName": categoryName,
+    if (promoType != null) "promoType": promoType,
+    "title": title,
+    "brand": brand,
+    if (gender != null) "gender": gender,
+    "description": description,
+    "price": price.toString(),
+    "phone": phone,
+    if (latitude != null) "latitude": latitude.toString(),
+    if (longitude != null) "longitude": longitude.toString(),
+    if (address != null) "address": address,
+  });
 
-    // add images
-    for (var file in images) {
-      final mimeType = lookupMimeType(file.path) ?? 'application/octet-stream';
-      request.files.add(await http.MultipartFile.fromPath(
-        'images',
-        file.path,
-        contentType: MediaType.parse(mimeType),
-      ));
-    }
-
-    final streamedResponse = await request.send();
-    final res = await http.Response.fromStream(streamedResponse);
-
-    if (res.statusCode == 201) {
-      return Ad.fromJson(jsonDecode(res.body));
-    } else {
-      print(res.body);
-      throw Exception("Failed to create ad: ${res.statusCode} ${res.body}");
-    }
+  // Add images
+  for (var file in images) {
+    final mimeType = lookupMimeType(file.path) ?? 'application/octet-stream';
+    request.files.add(await http.MultipartFile.fromPath(
+      'images',
+      file.path,
+      contentType: MediaType.parse(mimeType),
+    ));
   }
+
+  final streamedResponse = await request.send();
+  final res = await http.Response.fromStream(streamedResponse);
+
+  if (res.statusCode == 201) {
+    return Ad.fromJson(jsonDecode(res.body));
+  } else {
+    print(res.body);
+    throw Exception("Failed to create ad: ${res.statusCode} ${res.body}");
+  }
+}
 
   /// Update ad
   Future<Ad> updateAd(String id, Map<String, dynamic> data, {List<File>? images}) async {

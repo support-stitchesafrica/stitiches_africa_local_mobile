@@ -50,11 +50,10 @@ class _SellFormScreenState extends State<SellFormScreen> {
   String? longitude;
   String? address;
   bool _isGettingLocation = false;
-  final locationController = TextEditingController();
+  final TextEditingController locationController = TextEditingController();
 
   // Step 2 controllers
   final TextEditingController _titleController = TextEditingController();
-  final TextEditingController _brandController = TextEditingController();
   final TextEditingController _genderController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
@@ -62,10 +61,24 @@ class _SellFormScreenState extends State<SellFormScreen> {
 
   String? _selectedPromo;
 
+  String? _userBrand; // brand from user local storage
+
   @override
   void initState() {
     super.initState();
     _fetchCategories();
+    _loadUserBrand();
+  }
+
+  Future<void> _loadUserBrand() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userJson = prefs.getString("user");
+    if (userJson != null) {
+      final userMap = jsonDecode(userJson) as Map<String, dynamic>;
+      setState(() {
+        _userBrand = userMap["brandName"]; // brand saved in user
+      });
+    }
   }
 
   Future<void> _fetchCategories() async {
@@ -77,7 +90,6 @@ class _SellFormScreenState extends State<SellFormScreen> {
       });
     } catch (e) {
       setState(() {
-        // Fallback categories if API fails
         categoryData = [
           {"id": "1", "categoryName": "BESPOKE"},
           {"id": "2", "categoryName": "READY TO WEAR"},
@@ -85,9 +97,9 @@ class _SellFormScreenState extends State<SellFormScreen> {
         ];
         isLoadingCategories = false;
       });
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error loading categories: $e")),
+      );
     }
   }
 
@@ -144,16 +156,24 @@ class _SellFormScreenState extends State<SellFormScreen> {
         latitude = pos.latitude.toString();
         longitude = pos.longitude.toString();
         address = fullAddress;
-        locationController.text =
-            address ?? "${pos.latitude}, ${pos.longitude}";
+        locationController.text = fullAddress;
         _isGettingLocation = false;
       });
     } catch (e) {
       setState(() => _isGettingLocation = false);
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Error fetching location: $e")),
+      );
     }
+  }
+
+  // Update latitude/longitude if user manually edits
+  void _onLocationChanged(String value) {
+    setState(() {
+      address = value;
+      latitude = null;
+      longitude = null;
+    });
   }
 
   Future<void> _pickImages() async {
@@ -174,14 +194,11 @@ class _SellFormScreenState extends State<SellFormScreen> {
   bool _isStep1Valid() {
     return selectedCategories.isNotEmpty &&
         _selectedImages.isNotEmpty &&
-        latitude != null &&
-        longitude != null &&
-        address != null;
+        (address != null && address!.isNotEmpty);
   }
 
   bool _isStep2Valid() {
     return _titleController.text.isNotEmpty &&
-        _brandController.text.isNotEmpty &&
         _genderController.text.isNotEmpty &&
         _descriptionController.text.isNotEmpty &&
         _priceController.text.isNotEmpty &&
@@ -214,22 +231,20 @@ class _SellFormScreenState extends State<SellFormScreen> {
         token: token,
       );
 
-      await adService.createAd({
-        "userId": userId,
-        "categoryName": selectedCategories.join(","),
-        "title": _titleController.text,
-        "brand": _brandController.text,
-        "gender": _genderController.text,
-        "description": _descriptionController.text,
-        "price": double.tryParse(_priceController.text) ?? 0.0,
-        "phone": _phoneController.text,
-        "state": _selectedState,
-        "area": _selectedArea,
-        "latitude": latitude != null ? double.parse(latitude!) : null,
-        "longitude": longitude != null ? double.parse(longitude!) : null,
-        "address": address,
-        "promoType": promoType,
-      }, _selectedImages);
+      await adService.createAd(
+        categoryName: selectedCategories.join(","),
+        promoType: promoType,
+        title: _titleController.text,
+        brand: _userBrand ?? "UNKNOWN",
+        gender: _genderController.text,
+        description: _descriptionController.text,
+        price: double.tryParse(_priceController.text) ?? 0.0,
+        phone: _phoneController.text,
+        latitude: latitude != null ? double.parse(latitude!) : null,
+        longitude: longitude != null ? double.parse(longitude!) : null,
+        address: address,
+        images: _selectedImages,
+      );
     } catch (e) {
       throw Exception("Failed to save ad: $e");
     }
@@ -313,19 +328,22 @@ class _SellFormScreenState extends State<SellFormScreen> {
         centerTitle: true,
       ),
       body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 500),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                Image.asset(
-                  "images/Stitches Africa Logo-08.png",
-                  height: 80,
-                ), // ✅ Logo at top
-                const SizedBox(height: 20),
-                Expanded(child: _currentStep == 0 ? _step1() : _step2()),
-              ],
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 500),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    "images/Stitches Africa Logo-08.png",
+                    height: 80,
+                  ),
+                  const SizedBox(height: 20),
+                  _currentStep == 0 ? _step1() : _step2(),
+                ],
+              ),
             ),
           ),
         ),
@@ -349,180 +367,171 @@ class _SellFormScreenState extends State<SellFormScreen> {
     );
   }
 
+  // --- Step 1 ---
   Widget _step1() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _label("Select Categories*"),
-          if (isLoadingCategories)
-            const Center(child: CircularProgressIndicator())
-          else
-            ...categoryData.map((c) {
-              final category = c["categoryName"]?.toString() ?? "";
-              if (category.isEmpty)
-                return const SizedBox.shrink(); // Skip empty categories
-              final selected = selectedCategories.contains(category);
-              return CheckboxListTile(
-                title: Text(category),
-                value: selected,
-                onChanged: (val) {
-                  setState(() {
-                    if (val == true) {
-                      selectedCategories.add(category);
-                    } else {
-                      selectedCategories.remove(category);
-                    }
-                  });
-                },
-              );
-            }),
-          const SizedBox(height: 12),
-          TextField(
-            controller: locationController,
-            readOnly: true,
-            decoration: InputDecoration(
-              labelText: "Your location",
-              border: const OutlineInputBorder(),
-              suffixIcon: _isGettingLocation
-                  ? const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : IconButton(
-                      icon: const Icon(Icons.my_location),
-                      onPressed: _getUserLocation,
-                    ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _label("Select Categories*"),
+        if (isLoadingCategories)
+          const Center(child: CircularProgressIndicator())
+        else
+          ...categoryData.map((c) {
+            final category = c["categoryName"]?.toString() ?? "";
+            if (category.isEmpty) return const SizedBox.shrink();
+            final selected = selectedCategories.contains(category);
+            return CheckboxListTile(
+              title: Text(category),
+              value: selected,
+              onChanged: (val) {
+                setState(() {
+                  if (val == true) {
+                    selectedCategories.add(category);
+                  } else {
+                    selectedCategories.remove(category);
+                  }
+                });
+              },
+            );
+          }),
+        const SizedBox(height: 12),
+        TextField(
+          controller: locationController,
+          readOnly: false,
+          onChanged: _onLocationChanged,
+          decoration: InputDecoration(
+            labelText: "Your location",
+            border: const OutlineInputBorder(),
+            suffixIcon: _isGettingLocation
+                ? const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.my_location),
+                    onPressed: _getUserLocation,
+                  ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        _label("Add Photos*"),
+        InkWell(
+          onTap: _pickImages,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: const [
+                Icon(Icons.image, color: Colors.grey),
+                SizedBox(width: 8),
+                Text("Tap to select images"),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          _label("Add Photos*"),
-          InkWell(
-            onTap: _pickImages,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.grey),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: const [
-                  Icon(Icons.image, color: Colors.grey),
-                  SizedBox(width: 8),
-                  Text("Tap to select images"),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (_selectedImages.isNotEmpty)
-            SizedBox(
-              height: 100,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemBuilder: (context, index) => Stack(
-                  children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Image.file(
-                        _selectedImages[index],
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                      ),
+        ),
+        const SizedBox(height: 8),
+        if (_selectedImages.isNotEmpty)
+          SizedBox(
+            height: 100,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemBuilder: (context, index) => Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      _selectedImages[index],
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
                     ),
-                    Positioned(
-                      right: 0,
-                      top: 0,
-                      child: GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _selectedImages.removeAt(index);
-                          });
-                        },
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: Colors.black54,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          padding: const EdgeInsets.all(2),
-                          child: const Icon(
-                            Icons.close,
-                            size: 18,
-                            color: Colors.white,
-                          ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedImages.removeAt(index);
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: const Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Colors.white,
                         ),
                       ),
                     ),
-                  ],
-                ),
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemCount: _selectedImages.length,
+                  ),
+                ],
               ),
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemCount: _selectedImages.length,
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 
+  // --- Step 2 ---
   Widget _step2() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _label("Title*"),
-          _inputField(_titleController),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(child: _inputField(_genderController, hint: "Gender*")),
-              const SizedBox(width: 12),
-              Expanded(child: _inputField(_brandController, hint: "Brand*")),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _label("State*"),
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: NigerianStatesAndLGA.allStates
-                .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                .toList(),
-            value: _selectedState,
-            onChanged: (val) {
-              setState(() {
-                _selectedState = val;
-                _selectedArea = null;
-                areaList = val != null
-                    ? NigerianStatesAndLGA.getStateLGAs(val)
-                    : [];
-              });
-            },
-          ),
-          const SizedBox(height: 12),
-          _label("Area (LGA)*"),
-          DropdownButtonFormField<String>(
-            decoration: const InputDecoration(border: OutlineInputBorder()),
-            items: areaList
-                .map((a) => DropdownMenuItem(value: a, child: Text(a)))
-                .toList(),
-            value: _selectedArea,
-            onChanged: (val) => setState(() => _selectedArea = val),
-          ),
-          const SizedBox(height: 12),
-          _label("Description*"),
-          _inputField(_descriptionController, maxLines: 3),
-          const SizedBox(height: 12),
-          _label("Price*"),
-          _inputField(_priceController),
-          const SizedBox(height: 12),
-          _label("Your phone number*"),
-          _inputField(_phoneController),
-          const SizedBox(height: 20),
-          _label("Promote your Brand"),
-          const SizedBox(height: 10),
-          _promoOptions(),
-        ],
-      ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _label("Title*"),
+        _inputField(_titleController),
+        const SizedBox(height: 12),
+        _label("Gender*"),
+        _inputField(_genderController),
+        const SizedBox(height: 12),
+        _label("State*"),
+        DropdownButtonFormField<String>(
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+          items: NigerianStatesAndLGA.allStates
+              .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+              .toList(),
+          value: _selectedState,
+          onChanged: (val) {
+            setState(() {
+              _selectedState = val;
+              _selectedArea = null;
+              areaList = val != null ? NigerianStatesAndLGA.getStateLGAs(val) : [];
+            });
+          },
+        ),
+        const SizedBox(height: 12),
+        _label("Area (LGA)*"),
+        DropdownButtonFormField<String>(
+          decoration: const InputDecoration(border: OutlineInputBorder()),
+          items: areaList
+              .map((a) => DropdownMenuItem(value: a, child: Text(a)))
+              .toList(),
+          value: _selectedArea,
+          onChanged: (val) => setState(() => _selectedArea = val),
+        ),
+        const SizedBox(height: 12),
+        _label("Description*"),
+        _inputField(_descriptionController, maxLines: 3),
+        const SizedBox(height: 12),
+        _label("Price*"),
+        _inputField(_priceController),
+        const SizedBox(height: 12),
+        _label("Your phone number*"),
+        _inputField(_phoneController),
+        const SizedBox(height: 20),
+        _label("Promote your Brand"),
+        const SizedBox(height: 10),
+        _promoOptions(),
+      ],
     );
   }
 

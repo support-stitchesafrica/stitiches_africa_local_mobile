@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'models/ad.dart';
 import 'shop_listing_page.dart';
 
@@ -36,9 +35,15 @@ class CategoryStoresPage extends StatelessWidget {
               itemCount: stores.length,
               itemBuilder: (context, index) {
                 final store = stores[index];
+                final ads = adsResolver(store);
+
+                // Get first image from the ads if available
+                final previewImage = ads.isNotEmpty && ads.first.images.isNotEmpty
+                    ? ads.first.images.first
+                    : null;
+
                 return GestureDetector(
                   onTap: () {
-                    final ads = adsResolver(store);
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -55,14 +60,19 @@ class CategoryStoresPage extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        const CircleAvatar(
+                        CircleAvatar(
                           radius: 30,
-                          backgroundColor: Colors.black,
-                          child: Icon(
-                            Icons.store,
-                            color: Colors.white,
-                            size: 28,
-                          ),
+                          backgroundColor: Colors.black12,
+                          backgroundImage: previewImage != null
+                              ? NetworkImage(previewImage)
+                              : null,
+                          child: previewImage == null
+                              ? const Icon(
+                                  Icons.store,
+                                  color: Colors.white,
+                                  size: 28,
+                                )
+                              : null,
                         ),
                         const SizedBox(height: 8),
                         Padding(

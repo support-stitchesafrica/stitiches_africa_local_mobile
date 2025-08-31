@@ -169,10 +169,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
           _isBvnVerified = true;
           fullName = result["fullName"] ?? "";
           bvnEmail = result["email"] ?? "";
-
-          // default email comes from BVN
           email = bvnEmail;
-
           dob = result["dob"] ?? "";
           gender = result["gender"] ?? "";
         });
@@ -189,12 +186,6 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
     }
   }
 
-  void _resetToStep(int step) {
-    if (step >= 0 && step <= 3) {
-      setState(() => _currentStep = step);
-    }
-  }
-
   void _nextStep(AuthController controller) async {
     if (_currentStep == 0) {
       if (_logoFile == null) {
@@ -203,27 +194,31 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         ).showSnackBar(const SnackBar(content: Text("Please upload a logo")));
         return;
       }
-      if (brandName == null || brandName!.isEmpty) {
+      if (_brandNameController.text.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Please enter your brand name")),
         );
         return;
+      } else {
+        brandName = _brandNameController.text;
       }
-    } else if (_currentStep == 1) {
-      if (selectedCategories.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Select at least one category")),
-        );
-        return;
-      }
-    } else if (_currentStep == 2) {
-      if (locationController.text.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please set your location")),
-        );
-        return;
-      }
-    } else if (_currentStep == 3) {
+    }
+
+    if (_currentStep == 1 && selectedCategories.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Select at least one category")),
+      );
+      return;
+    }
+
+    if (_currentStep == 2 && locationController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please set your location")));
+      return;
+    }
+
+    if (_currentStep == 3) {
       if (!_isBvnVerified) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("Verify BVN before registering.")),
@@ -234,57 +229,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       if (_formKey.currentState!.validate()) {
         _formKey.currentState!.save();
 
-        // Debug: Print form data after save
-        print("=== FORM DATA AFTER SAVE ===");
-        print("fullName: $fullName");
-        print("email: $email");
-        print("password: ${password?.length} characters");
-        print("phone: $phone");
-        print("useBvnEmail: $useBvnEmail");
-        print("bvnEmail: $bvnEmail");
-        print("===========================");
-
-        // 🔑 ensure email is set
-        if (useBvnEmail) {
-          email = bvnEmail;
-        }
-
-        // Additional validation for required fields
-        if (phone == null || phone!.isEmpty) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Please enter your phone number")),
-          );
-          return;
-        }
-
-        // Validate location data
-        if (latitude == null || longitude == null || address == null) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Please set your location in step 3")),
-          );
-          return;
-        }
+        if (useBvnEmail) email = bvnEmail;
 
         try {
-          // Ensure email is set properly
-          if (useBvnEmail && bvnEmail != null) {
-            email = bvnEmail;
-          }
-
-          // Debug: Print registration data
-          print("Vendor Registration data:");
-          print("fullName: $fullName");
-          print("email: $email");
-          print("password: ${password?.length} characters");
-          print("brandName: $brandName");
-          print("phone: $phone");
-          print("bvn: ${_bvnController.text.trim()}");
-          print("logo: ${_logoFile?.path}");
-          print("categories: ${selectedCategories.join(", ")}");
-          print("latitude: $latitude");
-          print("longitude: $longitude");
-          print("address: $address");
-
           await controller.registerVendor(
             fullName: fullName!,
             email: email!,
@@ -307,78 +254,46 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             context,
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
-        } catch (e, stackTrace) {
-          // Print error and stack trace to console for debugging
-          print("Vendor Registration error: $e");
-          print("Stack trace: $stackTrace");
-
-          String errorMessage =
-              "An error occurred during vendor registration.\n";
-          errorMessage += "Error: ${e.toString()}\n";
-
-          // If the error is an Exception with a message, try to extract more info
-          if (e is Exception) {
-            errorMessage += "Exception Type: ${e.runtimeType}\n";
-          }
-
-          // Optionally, show part of the stack trace in the snackbar for more detail
-          final stackLines = stackTrace.toString().split('\n');
-          if (stackLines.isNotEmpty) {
-            errorMessage += "Stack: ${stackLines.first}\n";
-          }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
-              duration: const Duration(seconds: 6),
-            ),
-          );
+        } catch (e) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("Error: $e")));
         }
-        return;
       }
     }
 
-    // Only increment if we're not at the last step
-    if (_currentStep < 3) {
-      setState(() => _currentStep++);
-    }
+    if (_currentStep < 3) setState(() => _currentStep++);
   }
 
   Widget _buildLogoStep() {
     return Center(
-      child: Form(
-        key: GlobalKey<FormState>(),
-        child: Column(
-          children: [
-            Image.asset("images/Stitches Africa Logo-08.png", height: 140),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: _pickLogo,
-              child: CircleAvatar(
-                radius: 60,
-                backgroundImage: _logoFile != null
-                    ? FileImage(_logoFile!)
-                    : null,
-                child: _logoFile == null
-                    ? const Icon(Icons.add_a_photo, size: 40)
-                    : null,
-              ),
+      child: Column(
+        children: [
+          Image.asset("images/Stitches Africa Logo-08.png", height: 140),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: _pickLogo,
+            child: CircleAvatar(
+              radius: 60,
+              backgroundImage: _logoFile != null ? FileImage(_logoFile!) : null,
+              child: _logoFile == null
+                  ? const Icon(Icons.add_a_photo, size: 40)
+                  : null,
             ),
-            const SizedBox(height: 20),
-            const Text("Upload your logo"),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: 300,
-              child: TextFormField(
-                controller: _brandNameController,
-                decoration: const InputDecoration(labelText: "Brand Name"),
-                validator: (val) =>
-                    val!.isEmpty ? "Enter your brand name" : null,
-                onChanged: (val) => brandName = val,
-              ),
+          ),
+          const SizedBox(height: 20),
+          const Text("Upload your logo"),
+          const SizedBox(height: 20),
+          SizedBox(
+            width: 300,
+            child: TextFormField(
+              controller: _brandNameController,
+              decoration: const InputDecoration(labelText: "Brand Name"),
+              validator: (val) => val!.isEmpty ? "Enter your brand name" : null,
+              onChanged: (val) => brandName = val,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -468,7 +383,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
           key: _formKey,
           child: Column(
             children: [
-              Image.asset("images/Stitches Africa Logo-08.png", height: 140),
+              Image.asset("images/Stitches Africa Logo-06.png", height: 80),
               const SizedBox(height: 20),
               const Text(
                 "Create your account",

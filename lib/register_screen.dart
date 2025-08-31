@@ -299,7 +299,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return Column(
       children: [
         Center(
-          child: Image.asset("images/Stitches Africa Logo-08.png", height: 80),
+          child: Image.asset("images/Stitches Africa Logo-06.png", height: 80),
         ),
         const SizedBox(height: 30),
       ],
