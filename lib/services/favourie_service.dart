@@ -8,9 +8,9 @@ class AdService {
   AdService({required this.baseUrl, required this.token});
 
   Map<String, String> get _headers => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $token',
+  };
 
   /// Add an ad to favourites
   Future<Map<String, dynamic>> addFavouriteAd(String adId) async {
@@ -24,8 +24,9 @@ class AdService {
     if (response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      throw Exception(jsonDecode(response.body)['message'] ??
-          'Failed to add favourite');
+      throw Exception(
+        jsonDecode(response.body)['message'] ?? 'Failed to add favourite',
+      );
     }
   }
 
@@ -37,8 +38,9 @@ class AdService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as List<dynamic>;
     } else {
-      throw Exception(jsonDecode(response.body)['message'] ??
-          'Failed to fetch favourite ads');
+      throw Exception(
+        jsonDecode(response.body)['message'] ?? 'Failed to fetch favourite ads',
+      );
     }
   }
 
@@ -51,8 +53,10 @@ class AdService {
       final data = jsonDecode(response.body);
       return data['ads'] as List<dynamic>;
     } else {
-      throw Exception(jsonDecode(response.body)['message'] ??
-          'Failed to fetch store listings');
+      throw Exception(
+        jsonDecode(response.body)['message'] ??
+            'Failed to fetch store listings',
+      );
     }
   }
 
@@ -64,8 +68,9 @@ class AdService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body) as Map<String, dynamic>;
     } else {
-      throw Exception(jsonDecode(response.body)['message'] ??
-          'Failed to fetch listing');
+      throw Exception(
+        jsonDecode(response.body)['message'] ?? 'Failed to fetch listing',
+      );
     }
   }
 }

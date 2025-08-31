@@ -375,312 +375,300 @@ class _HomePageState extends State<HomePage> {
       body: busy
           ? const Center(child: CircularProgressIndicator())
           : error != null
-              ? Center(child: Text(error!))
-              : CustomScrollView(
-                  slivers: [
-                    // HEADER
-                    SliverToBoxAdapter(
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        color: Colors.black,
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: GestureDetector(
-                                onTap: _refreshLocationAndStores,
-                                child: Container(
-                                  height: 44,
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.my_location,
-                                        color: Colors.black,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Text(
-                                          _address,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: const TextStyle(
-                                            color: Colors.black,
-                                            fontSize: 12.5,
-                                            fontWeight: FontWeight.w600,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      const Icon(
-                                        Icons.edit_location_alt,
-                                        color: Colors.black54,
-                                        size: 18,
-                                      ),
-                                    ],
-                                  ),
-                                ),
+          ? Center(child: Text(error!))
+          : CustomScrollView(
+              slivers: [
+                // HEADER
+                SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    color: Colors.black,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _refreshLocationAndStores,
+                            child: Container(
+                              height: 44,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Container(
-                                height: 44,
-                                padding:
-                                    const EdgeInsets.symmetric(horizontal: 10),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: _selectedNearbyStore,
-                                    isExpanded: true,
-                                    icon: const Icon(
-                                      Icons.expand_more,
-                                      color: Colors.black,
-                                    ),
-                                    hint: const Text(
-                                      "Nearby stores",
-                                      style: TextStyle(
-                                        color: Colors.black54,
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.my_location,
+                                    color: Colors.black,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      _address,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.black,
                                         fontSize: 12.5,
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                    style: const TextStyle(
-                                      color: Colors.black,
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                    items: _nearbyStores
-                                        .map(
-                                          (store) => DropdownMenuItem(
-                                            value: store,
-                                            child: Text(
-                                              store,
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (val) {
-                                      setState(
-                                          () => _selectedNearbyStore = val);
-                                      if (val != null) {
-                                        final ads = _adsForStore(val);
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => ShopListingsPage(
-                                              storeName: val,
-                                              ads: uniqueAdsByTitleAndImages(
-                                                ads,
-                                              ),
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    },
                                   ),
-                                ),
+                                  const SizedBox(width: 6),
+                                  const Icon(
+                                    Icons.edit_location_alt,
+                                    color: Colors.black54,
+                                    size: 18,
+                                  ),
+                                ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // CATEGORIES
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Text(
-                          "Categories",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ),
-                    SliverToBoxAdapter(
-                      child: SizedBox(
-                        height: 100,
-                        child: ListView.builder(
-                          scrollDirection: Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          itemCount: backendCategories.length,
-                          itemBuilder: (context, index) {
-                            final category = backendCategories[index];
-                            final color = _getColorForCategory(category);
-                            final icon = _getIconForCategory(category);
-                            return GestureDetector(
-                              onTap: () {
-                                final stores = _storesForCategory(category);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => CategoryStoresPage(
-                                      category: category,
-                                      stores: stores,
-                                      adsResolver: (store) =>
-                                          _adsForStore(store),
-                                    ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            height: 44,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: _selectedNearbyStore,
+                                isExpanded: true,
+                                icon: const Icon(
+                                  Icons.expand_more,
+                                  color: Colors.black,
+                                ),
+                                hint: const Text(
+                                  "Nearby stores",
+                                  style: TextStyle(
+                                    color: Colors.black54,
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                );
-                              },
-                              child: Container(
-                                width: 110,
-                                margin: const EdgeInsets.only(right: 12),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CircleAvatar(
-                                      backgroundColor: color,
-                                      radius: 22,
-                                      child: Icon(
-                                        icon,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                      ),
-                                      child: Text(
-                                        category,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                items: _nearbyStores
+                                    .map(
+                                      (store) => DropdownMenuItem(
+                                        value: store,
+                                        child: Text(
+                                          store,
+                                          overflow: TextOverflow.ellipsis,
                                         ),
-                                        maxLines: 2,
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                    ),
-                                  ],
-                                ),
+                                    )
+                                    .toList(),
+                                onChanged: (val) {
+                                  setState(() => _selectedNearbyStore = val);
+                                  if (val != null) {
+                                    final ads = _adsForStore(val);
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ShopListingsPage(
+                                          storeName: val,
+                                          ads: uniqueAdsByTitleAndImages(ads),
+                                        ),
+                                      ),
+                                    );
+                                  }
+                                },
                               ),
-                            );
-                          },
-                        ),
-                      ),
-                    ),
-
-                    const SliverToBoxAdapter(
-                      child: SizedBox(height: 12),
-                    ),
-
-                    // NEARBY STORES HEADER
-                    const SliverToBoxAdapter(
-                      child: Padding(
-                        padding:
-                            EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        child: Text(
-                          "Nearby Stores",
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // CATEGORIES
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Text(
+                      "Categories",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-
-                    // ✅ FIXED: GRID instead of horizontal scrolling
-                    SliverPadding(
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: SizedBox(
+                    height: 100,
+                    child: ListView.builder(
+                      scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 12),
-                      sliver: SliverGrid(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final storeName = _nearbyStores[index];
-                            final ads = _adsForStore(storeName);
-
-                            final previewImage =
-                                ads.isNotEmpty && ads.first.images.isNotEmpty
-                                    ? ads.first.images.first
-                                    : null;
-
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ShopListingsPage(
-                                      storeName: storeName,
-                                      ads: uniqueAdsByTitleAndImages(ads),
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: Colors.grey.shade200,
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    CircleAvatar(
-                                      radius: 30,
-                                      backgroundColor: Colors.black12,
-                                      backgroundImage: previewImage != null
-                                          ? NetworkImage(previewImage)
-                                          : null,
-                                      child: previewImage == null
-                                          ? const Icon(
-                                              Icons.store,
-                                              color: Colors.black54,
-                                            )
-                                          : null,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 6,
-                                      ),
-                                      child: Text(
-                                        storeName,
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        maxLines: 2,
-                                        textAlign: TextAlign.center,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
+                      itemCount: backendCategories.length,
+                      itemBuilder: (context, index) {
+                        final category = backendCategories[index];
+                        final color = _getColorForCategory(category);
+                        final icon = _getIconForCategory(category);
+                        return GestureDetector(
+                          onTap: () {
+                            final stores = _storesForCategory(category);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => CategoryStoresPage(
+                                  category: category,
+                                  stores: stores,
+                                  adsResolver: (store) => _adsForStore(store),
                                 ),
                               ),
                             );
                           },
-                          childCount: _nearbyStores.length,
+                          child: Container(
+                            width: 110,
+                            margin: const EdgeInsets.only(right: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade200,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: color,
+                                  radius: 22,
+                                  child: Icon(
+                                    icon,
+                                    color: Colors.white,
+                                    size: 20,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                  ),
+                                  child: Text(
+                                    category,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 2,
+                                    textAlign: TextAlign.center,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+
+                const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                // NEARBY STORES HEADER
+                const SliverToBoxAdapter(
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Text(
+                      "Nearby Stores",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // ✅ FIXED: GRID instead of horizontal scrolling
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  sliver: SliverGrid(
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final storeName = _nearbyStores[index];
+                      final ads = _adsForStore(storeName);
+
+                      final previewImage =
+                          ads.isNotEmpty && ads.first.images.isNotEmpty
+                          ? ads.first.images.first
+                          : null;
+
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ShopListingsPage(
+                                storeName: storeName,
+                                ads: uniqueAdsByTitleAndImages(ads),
+                              ),
+                            ),
+                          );
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade200,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              CircleAvatar(
+                                radius: 30,
+                                backgroundColor: Colors.black12,
+                                backgroundImage: previewImage != null
+                                    ? NetworkImage(previewImage)
+                                    : null,
+                                child: previewImage == null
+                                    ? const Icon(
+                                        Icons.store,
+                                        color: Colors.black54,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(height: 6),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                ),
+                                child: Text(
+                                  storeName,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                  maxLines: 2,
+                                  textAlign: TextAlign.center,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        gridDelegate:
-                            const SliverGridDelegateWithFixedCrossAxisCount(
+                      );
+                    }, childCount: _nearbyStores.length),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
                           crossAxisCount: 2, // ✅ two per row
                           mainAxisSpacing: 10,
                           crossAxisSpacing: 10,
                           childAspectRatio: 0.9,
                         ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
+              ],
+            ),
     );
   }
 }

@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'models/ad.dart';
+import 'services/favourie_service.dart';
+import 'utils/prefs.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final Ad ad;
@@ -23,10 +25,19 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   final TextEditingController _commentCtrl = TextEditingController();
   bool _saving = false;
 
+  // Favorite functionality
+  bool _isLoadingFavorite = false;
+  late final AdService _adService;
+
   @override
   void initState() {
     super.initState();
+    print("Product ID: ${widget.ad.id}");
     _pageController = PageController();
+    _adService = AdService(
+      baseUrl: "https://stictches-africa-api-local.vercel.app/api",
+      token: Prefs.token ?? "",
+    );
     _loadStoredFeedback();
   }
 
@@ -63,6 +74,27 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  // ---------------- Favorite functionality ----------------
+  Future<void> _addToFavorites() async {
+    if (Prefs.token == null) {
+      _toast(context, "Please login to add favorites");
+      return;
+    }
+
+    setState(() => _isLoadingFavorite = true);
+
+    try {
+      await _adService.addFavouriteAd(widget.ad.id);
+      _toast(context, "Added to favorites!");
+    } catch (e) {
+      _toast(context, "Error: ${e.toString()}");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingFavorite = false);
+      }
+    }
   }
 
   // ---------------- Ratings & Comments (local persistence) ----------------
@@ -151,6 +183,22 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final hasManyImages = ad.images.length > 1;
 
     return Scaffold(
+      floatingActionButton: Prefs.token != null
+          ? FloatingActionButton(
+              onPressed: _isLoadingFavorite ? null : _addToFavorites,
+              backgroundColor: Colors.black,
+              child: _isLoadingFavorite
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.favorite_border, color: Colors.white),
+            )
+          : null,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -164,6 +212,18 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
+            actions: [
+              IconButton(
+                onPressed: _isLoadingFavorite ? null : _addToFavorites,
+                icon: _isLoadingFavorite
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.favorite_border, color: Colors.black),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Hero(
                 tag: ad.id,
@@ -322,7 +382,6 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       _StarBar(
                         value: _myRating,
                         onChanged: (v) => _saveRating(v),
-                        
                       ),
                     ],
                   ),
