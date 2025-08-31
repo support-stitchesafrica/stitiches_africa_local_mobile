@@ -62,7 +62,6 @@ class AuthService {
     required String password,
     required String brandName,
     required String phone,
-    required String userType,
     String? logo, // optional, backend expects uploaded file
     double? latitude,
     double? longitude,
@@ -72,30 +71,52 @@ class AuthService {
   }) async {
     final url = Uri.parse("$baseUrl/auth/register/vendor");
 
+    // Create the request body with proper null handling
+    final requestBody = <String, dynamic>{
+      "fullName": fullName,
+      "email": email,
+      "password": password,
+      "brandName": brandName,
+      "phone": phone,
+      "userType": "VENDOR",
+    };
+
+    // Add optional fields only if they're not null
+    if (logo != null) requestBody["logo"] = logo;
+    if (latitude != null) requestBody["latitude"] = latitude;
+    if (longitude != null) requestBody["longitude"] = longitude;
+    if (bvn != null) requestBody["bvn"] = bvn;
+    if (address != null) requestBody["address"] = address;
+    if (category != null && category.isNotEmpty) {
+      // Convert list to comma-separated string if needed
+      requestBody["category"] = category.join(", ");
+    }
+
+    // Debug: Print the request body
+    print("=== REQUEST BODY ===");
+    print("Request body: $requestBody");
+    print("===================");
+
     final response = await http.post(
       url,
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({
-        "fullName": fullName,
-        "email": email,
-        "password": password,
-        "brandName": brandName,
-        "phone": phone,
-        "logo": logo,
-        "latitude": latitude,
-        "longitude": longitude,
-        "bvn": bvn,
-        "address": address,
-        "userType": "VENDOR", // <-- add this
-        category: category,
-      }),
+      body: jsonEncode(requestBody),
     );
 
     if (response.statusCode == 201) {
       return jsonDecode(response.body);
     } else {
-      final error = jsonDecode(response.body);
-      throw Exception(error["message"] ?? "Vendor registration failed");
+      print("Vendor registration failed with status: ${response.statusCode}");
+      print("Response body: ${response.body}");
+
+      try {
+        final error = jsonDecode(response.body);
+        throw Exception(error["message"] ?? "Vendor registration failed");
+      } catch (e) {
+        throw Exception(
+          "Vendor registration failed: ${response.statusCode} - ${response.body}",
+        );
+      }
     }
   }
 
