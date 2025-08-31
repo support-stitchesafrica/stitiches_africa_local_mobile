@@ -13,46 +13,35 @@ class User {
   final String email;
   final String? phone;
 
-  User({
-    required this.id,
-    required this.name,
-    required this.email,
-    this.phone,
-  });
+  User({required this.id, required this.name, required this.email, this.phone});
 
   factory User.fromJson(Map<String, dynamic> json) => User(
-        id: json['id'],
-        name: json['name'] ?? '',
-        email: json['email'] ?? '',
-        phone: json['phone'],
-      );
+    id: json['id'] ?? '',
+    name: json['name'] ?? '',
+    email: json['email'] ?? '',
+    phone: json['phone'],
+  );
 
   Map<String, dynamic> toJson() => {
-        "id": id,
-        "name": name,
-        "email": email,
-        "phone": phone,
-      };
+    "id": id,
+    "name": name,
+    "email": email,
+    "phone": phone,
+  };
 }
 
 class Category {
   final String id;
   final String name;
 
-  Category({
-    required this.id,
-    required this.name,
-  });
+  Category({required this.id, required this.name});
 
   factory Category.fromJson(Map<String, dynamic> json) => Category(
-        id: json['id'],
-        name: json['name'],
-      );
+    id: json['id'] ?? '',
+    name: json['categoryName'] ?? json['name'] ?? '',
+  );
 
-  Map<String, dynamic> toJson() => {
-        "id": id,
-        "name": name,
-      };
+  Map<String, dynamic> toJson() => {"id": id, "name": name};
 }
 
 class Ad {
@@ -95,42 +84,48 @@ class Ad {
   });
 
   factory Ad.fromJson(Map<String, dynamic> json) => Ad(
-        id: json['id'],
-        userId: json['userId'],
-        categoryName: json['categoryName'],
-        images: List<String>.from(json['images'] ?? []),
-        title: json['title'],
-        brand: json['brand'],
-        gender: json['gender'],
-        description: json['description'],
-        price: (json['price'] as num).toDouble(),
-        phone: json['phone'],
-        latitude: json['latitude'] != null ? (json['latitude'] as num).toDouble() : null,
-        longitude: json['longitude'] != null ? (json['longitude'] as num).toDouble() : null,
-        address: json['address'],
-        promoType: json['promoType'],
-        createdAt: DateTime.parse(json['createdAt']),
-        user: json['user'] != null ? User.fromJson(json['user']) : null,
-        category: json['category'] != null ? Category.fromJson(json['category']) : null,
-      );
+    id: json['id'],
+    userId: json['userId'],
+    categoryName: json['categoryName'],
+    images: List<String>.from(json['images'] ?? []),
+    title: json['title'],
+    brand: json['brand'],
+    gender: json['gender'],
+    description: json['description'],
+    price: (json['price'] as num).toDouble(),
+    phone: json['phone'],
+    latitude: json['latitude'] != null
+        ? (json['latitude'] as num).toDouble()
+        : null,
+    longitude: json['longitude'] != null
+        ? (json['longitude'] as num).toDouble()
+        : null,
+    address: json['address'],
+    promoType: json['promoType'],
+    createdAt: DateTime.parse(json['createdAt']),
+    user: json['user'] != null ? User.fromJson(json['user']) : null,
+    category: json['category'] != null
+        ? Category.fromJson(json['category'])
+        : null,
+  );
 
   Map<String, dynamic> toJson() => {
-        "id": id,
-        "userId": userId,
-        "categoryName": categoryName,
-        "images": images,
-        "title": title,
-        "brand": brand,
-        "gender": gender,
-        "description": description,
-        "price": price,
-        "phone": phone,
-        "latitude": latitude,
-        "longitude": longitude,
-        "address": address,
-        "promoType": promoType,
-        "createdAt": createdAt.toIso8601String(),
-        "user": user?.toJson(),
-        "category": category?.toJson(),
-      };
+    "id": id,
+    "userId": userId,
+    "categoryName": categoryName,
+    "images": images,
+    "title": title,
+    "brand": brand,
+    "gender": gender,
+    "description": description,
+    "price": price,
+    "phone": phone,
+    "latitude": latitude,
+    "longitude": longitude,
+    "address": address,
+    "promoType": promoType,
+    "createdAt": createdAt.toIso8601String(),
+    "user": user?.toJson(),
+    "category": category?.toJson(),
+  };
 }

@@ -6,7 +6,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import 'models/ad.dart';
 import 'services/ad_feedback_service.dart';
+import 'services/favourie_service.dart';
 import 'services/user_service.dart';
+import 'utils/prefs.dart';
 
 class ProductDetailPage extends StatefulWidget {
   final Ad ad;
@@ -25,8 +27,13 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   final TextEditingController _commentCtrl = TextEditingController();
   bool _saving = false;
 
+  // Favorite functionality
+  bool _isLoadingFavorite = false;
+  late final AdService _adService;
+
   late final AdFeedbackService _feedbackService;
   late final UserService _userService;
+
   String? _token;
   String? _userId;
   String? _userFullName;
@@ -34,9 +41,14 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   @override
   void initState() {
     super.initState();
+    print("Product ID: ${widget.ad.id}");
     _pageController = PageController();
     _feedbackService = AdFeedbackService(baseUrl: "https://stictches-africa-api-local.vercel.app/api"); // Initialize services
     _userService = UserService();
+    _adService = AdService(
+      baseUrl: "https://stictches-africa-api-local.vercel.app/api",
+      token: Prefs.token ?? "",
+    );
     _loadStoredFeedback();
     _loadUserAndFeedback();
   }
@@ -133,7 +145,28 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     }
   }
 
-  // ---------------- Local Storage Keys ----------------
+  // ---------------- Favorite functionality ----------------
+  Future<void> _addToFavorites() async {
+    if (Prefs.token == null) {
+      _toast(context, "Please login to add favorites");
+      return;
+    }
+
+    setState(() => _isLoadingFavorite = true);
+
+    try {
+      await _adService.addFavouriteAd(widget.ad.id);
+      _toast(context, "Added to favorites!");
+    } catch (e) {
+      _toast(context, "Error: ${e.toString()}");
+    } finally {
+      if (mounted) {
+        setState(() => _isLoadingFavorite = false);
+      }
+    }
+  }
+
+  // ---------------- Ratings & Comments (local persistence) ----------------
   String get _ratingKey => "ad_rating_${widget.ad.id}";
   String get _commentsKey => "ad_comments_${widget.ad.id}";
 
@@ -189,6 +222,22 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
     final hasManyImages = ad.images.length > 1;
 
     return Scaffold(
+      floatingActionButton: Prefs.token != null
+          ? FloatingActionButton(
+              onPressed: _isLoadingFavorite ? null : _addToFavorites,
+              backgroundColor: Colors.black,
+              child: _isLoadingFavorite
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : const Icon(Icons.favorite_border, color: Colors.white),
+            )
+          : null,
       body: CustomScrollView(
         slivers: [
           SliverAppBar(
@@ -196,7 +245,24 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
             pinned: true,
             backgroundColor: Colors.white,
             iconTheme: const IconThemeData(color: Colors.black),
-            title: Text(ad.title, style: const TextStyle(color: Colors.black), maxLines: 1, overflow: TextOverflow.ellipsis),
+            title: Text(
+              ad.title,
+              style: const TextStyle(color: Colors.black),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            actions: [
+              IconButton(
+                onPressed: _isLoadingFavorite ? null : _addToFavorites,
+                icon: _isLoadingFavorite
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.favorite_border, color: Colors.black),
+              ),
+            ],
             flexibleSpace: FlexibleSpaceBar(
               background: Hero(
                 tag: ad.id,
@@ -237,19 +303,42 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                 children: [
                   Text(ad.title, style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      Chip(label: Text(ad.categoryName), backgroundColor: Colors.teal.shade50, side: BorderSide.none),
-                      const SizedBox(width: 8),
-                      Chip(label: Text(ad.brand), backgroundColor: Colors.orange.shade50, side: BorderSide.none),
-                      if ((ad.promoType ?? '').isNotEmpty) ...[
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        Chip(
+                          label: Text(ad.categoryName),
+                          backgroundColor: Colors.teal.shade50,
+                          side: BorderSide.none,
+                        ),
                         const SizedBox(width: 8),
-                        Chip(label: Text(ad.promoType!), backgroundColor: Colors.purple.shade50, side: BorderSide.none),
+                        Chip(
+                          label: Text(ad.brand),
+                          backgroundColor: Colors.orange.shade50,
+                          side: BorderSide.none,
+                        ),
+                        if ((ad.promoType ?? '').isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Chip(
+                            label: Text(ad.promoType!),
+                            backgroundColor: Colors.purple.shade50,
+                            side: BorderSide.none,
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                  const SizedBox(height: 12),
-                  Text("₦${_formatMoney(ad.price)}", style: const TextStyle(fontSize: 30, fontWeight: FontWeight.bold, color: Colors.teal)),
+                  const SizedBox(height: 11),
+                  Text(
+                    "₦${_formatMoney(ad.price)}",
+                    style: const TextStyle(
+                      fontSize: 30,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.teal,
+                    ),
+                  ),
+
                   const SizedBox(height: 16),
                   Wrap(
                     spacing: 12,
@@ -274,9 +363,18 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                   const SizedBox(height: 16),
                   Row(
                     children: [
-                      const Text("Your Rating", style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 8),
-                      _StarBar(value: _myRating, onChanged: _saveRating),
+                      const Text(
+                        "Your Rating",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 8), // small spacing you control
+                      _StarBar(
+                        value: _myRating,
+                        onChanged: (v) => _saveRating(v),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 20),
