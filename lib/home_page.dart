@@ -9,6 +9,7 @@ import 'services/ad_service.dart';
 import 'shop_listing_page.dart';
 import 'category_store.dart';
 import 'utils/ad_utils.dart'; // ✅ import helper
+import 'product_cart.dart'; // Import ProductCard
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -153,6 +154,10 @@ class _HomePageState extends State<HomePage> {
         setState(() {
           allAds = ads;
         });
+        print("=== ADS FETCHED ===");
+        print("Total ads: ${ads.length}");
+        print("Ads: ${ads.map((ad) => '${ad.title} (${ad.brand})').toList()}");
+        print("===================");
         _populateNearbyStoresFromAds();
       }
     } catch (e) {
@@ -233,6 +238,17 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     final busy = _isLoading || _locBusy;
+
+    // Debug information
+    print("=== BUILD DEBUG ===");
+    print("isLoading: $_isLoading");
+    print("locBusy: $_locBusy");
+    print("error: $error");
+    print("allAds length: ${allAds.length}");
+    print("nearbyStores: $_nearbyStores");
+    print("selectedNearbyStore: $_selectedNearbyStore");
+    print("==================");
+
     return Scaffold(
       backgroundColor: Colors.white,
       body: busy
@@ -335,6 +351,7 @@ class _HomePageState extends State<HomePage> {
                                   setState(() => _selectedNearbyStore = val);
                                   if (val != null) {
                                     final ads = _adsForStore(val);
+                                    print("Ads for store '$val': $ads");
                                     Navigator.push(
                                       context,
                                       MaterialPageRoute(
@@ -384,6 +401,7 @@ class _HomePageState extends State<HomePage> {
                         return GestureDetector(
                           onTap: () {
                             final stores = _storesForCategory(category);
+                            print("Stores for category '$category': $stores");
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -438,6 +456,84 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                 ),
+
+                // MAIN CONTENT - ADS LISTINGS
+                if (allAds.isNotEmpty) ...[
+                  const SliverToBoxAdapter(
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      child: Text(
+                        "Nearby Listings",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SliverPadding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    sliver: SliverGrid(
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.7,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                          ),
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        final ad = allAds[index];
+                        return ProductCard(ad: ad);
+                      }, childCount: allAds.length),
+                    ),
+                  ),
+                ] else ...[
+                  // NO ADS FOUND
+                  SliverFillRemaining(
+                    child: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.store_mall_directory_outlined,
+                            size: 64,
+                            color: Colors.grey[400],
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            "No listings found nearby",
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Try refreshing or check back later",
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          ElevatedButton.icon(
+                            onPressed: _refreshLocationAndStores,
+                            icon: const Icon(Icons.refresh),
+                            label: const Text("Refresh"),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.black,
+                              foregroundColor: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
     );

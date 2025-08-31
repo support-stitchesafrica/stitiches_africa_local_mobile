@@ -7,6 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:stitches_africa_local/controllers/auth_controller.dart';
 import 'package:stitches_africa_local/login_screen.dart';
 import 'package:stitches_africa_local/services/category_service.dart';
+
 class VendorRegisterScreen extends StatefulWidget {
   const VendorRegisterScreen({super.key});
 
@@ -43,6 +44,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
 
   // Form
   final _formKey = GlobalKey<FormState>();
+  final _brandNameController = TextEditingController();
   String? fullName;
   String? email;
   String? password;
@@ -52,7 +54,16 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   @override
   void initState() {
     super.initState();
+    _currentStep = 0; // Ensure we start at step 0
     _fetchCategories();
+  }
+
+  @override
+  void dispose() {
+    _brandNameController.dispose();
+    locationController.dispose();
+    _bvnController.dispose();
+    super.dispose();
   }
 
   Future<void> _fetchCategories() async {
@@ -71,9 +82,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         ];
         isLoadingCategories = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error loading categories: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
     }
   }
 
@@ -128,9 +139,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       });
     } catch (e) {
       setState(() => _isGettingLocation = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error fetching location: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
     }
   }
 
@@ -170,19 +181,26 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
         );
       }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       setState(() => _isVerifyingBvn = false);
+    }
+  }
+
+  void _resetToStep(int step) {
+    if (step >= 0 && step <= 3) {
+      setState(() => _currentStep = step);
     }
   }
 
   void _nextStep(AuthController controller) async {
     if (_currentStep == 0) {
       if (_logoFile == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Please upload a logo")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Please upload a logo")));
         return;
       }
       if (brandName == null || brandName!.isEmpty) {
@@ -216,12 +234,57 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
       if (_formKey.currentState!.validate()) {
         _formKey.currentState!.save();
 
+        // Debug: Print form data after save
+        print("=== FORM DATA AFTER SAVE ===");
+        print("fullName: $fullName");
+        print("email: $email");
+        print("password: ${password?.length} characters");
+        print("phone: $phone");
+        print("useBvnEmail: $useBvnEmail");
+        print("bvnEmail: $bvnEmail");
+        print("===========================");
+
         // 🔑 ensure email is set
         if (useBvnEmail) {
           email = bvnEmail;
         }
 
+        // Additional validation for required fields
+        if (phone == null || phone!.isEmpty) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please enter your phone number")),
+          );
+          return;
+        }
+
+        // Validate location data
+        if (latitude == null || longitude == null || address == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Please set your location in step 3")),
+          );
+          return;
+        }
+
         try {
+          // Ensure email is set properly
+          if (useBvnEmail && bvnEmail != null) {
+            email = bvnEmail;
+          }
+
+          // Debug: Print registration data
+          print("Vendor Registration data:");
+          print("fullName: $fullName");
+          print("email: $email");
+          print("password: ${password?.length} characters");
+          print("brandName: $brandName");
+          print("phone: $phone");
+          print("bvn: ${_bvnController.text.trim()}");
+          print("logo: ${_logoFile?.path}");
+          print("categories: ${selectedCategories.join(", ")}");
+          print("latitude: $latitude");
+          print("longitude: $longitude");
+          print("address: $address");
+
           await controller.registerVendor(
             fullName: fullName!,
             email: email!,
@@ -230,7 +293,6 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             phone: phone!,
             bvn: _bvnController.text.trim(),
             logo: _logoFile?.path,
-            userType: "VENDOR",
             latitude: latitude != null ? double.parse(latitude!) : null,
             longitude: longitude != null ? double.parse(longitude!) : null,
             address: address,
@@ -245,45 +307,78 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             context,
             MaterialPageRoute(builder: (_) => const LoginScreen()),
           );
-        } catch (e) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text(e.toString())));
+        } catch (e, stackTrace) {
+          // Print error and stack trace to console for debugging
+          print("Vendor Registration error: $e");
+          print("Stack trace: $stackTrace");
+
+          String errorMessage =
+              "An error occurred during vendor registration.\n";
+          errorMessage += "Error: ${e.toString()}\n";
+
+          // If the error is an Exception with a message, try to extract more info
+          if (e is Exception) {
+            errorMessage += "Exception Type: ${e.runtimeType}\n";
+          }
+
+          // Optionally, show part of the stack trace in the snackbar for more detail
+          final stackLines = stackTrace.toString().split('\n');
+          if (stackLines.isNotEmpty) {
+            errorMessage += "Stack: ${stackLines.first}\n";
+          }
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorMessage),
+              duration: const Duration(seconds: 6),
+            ),
+          );
         }
         return;
       }
     }
 
-    setState(() => _currentStep++);
+    // Only increment if we're not at the last step
+    if (_currentStep < 3) {
+      setState(() => _currentStep++);
+    }
   }
 
   Widget _buildLogoStep() {
     return Center(
-      child: Column(
-        children: [
-          Image.asset("images/Stitches Africa Logo-08.png", height: 140),
-          const SizedBox(height: 20),
-          GestureDetector(
-            onTap: _pickLogo,
-            child: CircleAvatar(
-              radius: 60,
-              backgroundImage: _logoFile != null ? FileImage(_logoFile!) : null,
-              child: _logoFile == null
-                  ? const Icon(Icons.add_a_photo, size: 40)
-                  : null,
+      child: Form(
+        key: GlobalKey<FormState>(),
+        child: Column(
+          children: [
+            Image.asset("images/Stitches Africa Logo-08.png", height: 140),
+            const SizedBox(height: 20),
+            GestureDetector(
+              onTap: _pickLogo,
+              child: CircleAvatar(
+                radius: 60,
+                backgroundImage: _logoFile != null
+                    ? FileImage(_logoFile!)
+                    : null,
+                child: _logoFile == null
+                    ? const Icon(Icons.add_a_photo, size: 40)
+                    : null,
+              ),
             ),
-          ),
-          const SizedBox(height: 20),
-          const Text("Upload your logo"),
-          const SizedBox(height: 20),
-          SizedBox(
-            width: 300,
-            child: TextFormField(
-              decoration: const InputDecoration(labelText: "Brand Name"),
-              validator: (val) => val!.isEmpty ? "Enter your brand name" : null,
-              onChanged: (val) => brandName = val,
+            const SizedBox(height: 20),
+            const Text("Upload your logo"),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: 300,
+              child: TextFormField(
+                controller: _brandNameController,
+                decoration: const InputDecoration(labelText: "Brand Name"),
+                validator: (val) =>
+                    val!.isEmpty ? "Enter your brand name" : null,
+                onChanged: (val) => brandName = val,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -375,8 +470,10 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             children: [
               Image.asset("images/Stitches Africa Logo-08.png", height: 140),
               const SizedBox(height: 20),
-              const Text("Create your account",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const Text(
+                "Create your account",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 20),
 
               // BVN field
@@ -392,16 +489,19 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
               SizedBox(
                 width: 300,
                 child: ElevatedButton(
-                  onPressed:
-                      _isVerifyingBvn ? null : () => _verifyBVN(controller),
+                  onPressed: _isVerifyingBvn
+                      ? null
+                      : () => _verifyBVN(controller),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.black,
                     minimumSize: const Size(double.infinity, 50),
                   ),
                   child: _isVerifyingBvn
                       ? const CircularProgressIndicator(color: Colors.white)
-                      : const Text("Verify BVN",
-                          style: TextStyle(color: Colors.white)),
+                      : const Text(
+                          "Verify BVN",
+                          style: TextStyle(color: Colors.white),
+                        ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -421,16 +521,16 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
 
                 CheckboxListTile(
                   value: useBvnEmail,
-                  onChanged: (val) =>
-                      setState(() => useBvnEmail = val ?? true),
+                  onChanged: (val) => setState(() => useBvnEmail = val ?? true),
                   title: const Text("Use BVN email"),
                 ),
                 if (!useBvnEmail)
                   SizedBox(
                     width: 300,
                     child: TextFormField(
-                      decoration:
-                          const InputDecoration(labelText: "Preferred Email"),
+                      decoration: const InputDecoration(
+                        labelText: "Preferred Email",
+                      ),
                       validator: (val) =>
                           val!.contains("@") ? null : "Enter a valid email",
                       onSaved: (val) => email = val,
@@ -439,7 +539,12 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                 else
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 8.0),
-                    child: Text("Using BVN Email: $bvnEmail"),
+                    child: Column(
+                      children: [
+                        Text("Using BVN Email: $bvnEmail"),
+                        Text("Email will be set to: $bvnEmail"),
+                      ],
+                    ),
                   ),
 
                 const SizedBox(height: 12),
@@ -447,11 +552,11 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                 SizedBox(
                   width: 300,
                   child: TextFormField(
-                    decoration:
-                        const InputDecoration(labelText: "Password"),
+                    decoration: const InputDecoration(labelText: "Password"),
                     obscureText: true,
                     validator: (val) {
-                      if (val == null || val.isEmpty) return "Password required";
+                      if (val == null || val.isEmpty)
+                        return "Password required";
                       if (val.length < 6) {
                         return "Password must be at least 6 characters";
                       }
@@ -465,8 +570,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                 SizedBox(
                   width: 300,
                   child: TextFormField(
-                    decoration:
-                        const InputDecoration(labelText: "Phone Number"),
+                    decoration: const InputDecoration(
+                      labelText: "Phone Number",
+                    ),
                     keyboardType: TextInputType.phone,
                     validator: (val) {
                       if (val == null || val.isEmpty) {
@@ -488,8 +594,9 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                 child: const Text(
                   "Already have an account? Sign in",
                   style: TextStyle(
-                      color: Colors.blue,
-                      decoration: TextDecoration.underline),
+                    color: Colors.blue,
+                    decoration: TextDecoration.underline,
+                  ),
                 ),
               ),
               const SizedBox(height: 40),
@@ -512,23 +619,34 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             _buildLocationStep(),
             _buildFormStep(controller),
           ];
+
           return Scaffold(
             appBar: AppBar(title: const Text("Vendor Register")),
             body: Padding(
               padding: const EdgeInsets.all(20.0),
               child: controller.isLoading
                   ? const Center(child: CircularProgressIndicator())
-                  : SizedBox(
+                  : _currentStep < steps.length
+                  ? SizedBox(
                       height: MediaQuery.of(context).size.height * 0.7,
                       child: steps[_currentStep],
-                    ),
+                    )
+                  : const Center(child: Text("Invalid step")),
             ),
             bottomNavigationBar: Padding(
               padding: const EdgeInsets.all(20.0),
               child: ElevatedButton(
-                onPressed: () => _nextStep(controller),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.black,
+                  minimumSize: const Size(double.infinity, 50),
+                ),
+                onPressed: (_currentStep == 3 && !_isBvnVerified)
+                    ? null
+                    : () => _nextStep(controller),
                 child: Text(
-                    _currentStep == steps.length - 1 ? "Register" : "Next"),
+                  _currentStep == steps.length - 1 ? "Register" : "Next",
+                  style: const TextStyle(color: Colors.white),
+                ),
               ),
             ),
           );

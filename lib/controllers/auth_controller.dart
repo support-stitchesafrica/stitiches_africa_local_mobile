@@ -113,7 +113,6 @@ class AuthController with ChangeNotifier {
     double? latitude,
     double? longitude,
     String? address,
-    required String userType,
   }) async {
     try {
       _isLoading = true;
@@ -121,6 +120,10 @@ class AuthController with ChangeNotifier {
 
       if (latitude == null || longitude == null) {
         await _determinePosition();
+        // Use the determined position if still null
+        latitude ??= this.latitude;
+        longitude ??= this.longitude;
+        address ??= this.address;
       }
 
       final result = await _authService.registerVendor(
@@ -135,7 +138,6 @@ class AuthController with ChangeNotifier {
         longitude: longitude,
         address: address,
         category: category ?? [],
-        userType: "VENDOR", // <-- add this
       );
 
       return result;
