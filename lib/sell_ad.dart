@@ -21,12 +21,12 @@ class SellFormScreen extends StatefulWidget {
 
 class _SellFormScreenState extends State<SellFormScreen> {
   final String paystackPublicKey =
-      "pk_test_37eba43300c473e8c80690177c32daf9302f82e6";
+      "sk_test_d00968ec82bfd142dfff9eb049f2dda9b73bb096";
 
   final Map<String, int> paystackPlans = {
-    "TOP": 1199900,
-    "Exclusive": 1999900,
-    "Boost": 2999900,
+    "TOP": 11999,
+    "EXCLUSIVE": 19999,
+    "BOOST": 29999,
   };
 
   int _currentStep = 0;
@@ -40,7 +40,7 @@ class _SellFormScreenState extends State<SellFormScreen> {
   String? _selectedState;
   String? _selectedArea;
   List<String> areaList = [];
-String? selectedCategory;
+  String? selectedCategory;
   // Image picker
   final ImagePicker _picker = ImagePicker();
   List<File> _selectedImages = [];
@@ -97,9 +97,9 @@ String? selectedCategory;
         ];
         isLoadingCategories = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error loading categories: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error loading categories: $e")));
     }
   }
 
@@ -161,9 +161,9 @@ String? selectedCategory;
       });
     } catch (e) {
       setState(() => _isGettingLocation = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error fetching location: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error fetching location: $e")));
     }
   }
 
@@ -192,10 +192,10 @@ String? selectedCategory;
   }
 
   bool _isStep1Valid() {
-  return selectedCategory != null &&
-      _selectedImages.isNotEmpty &&
-      (address != null && address!.isNotEmpty);
-}
+    return selectedCategory != null &&
+        _selectedImages.isNotEmpty &&
+        (address != null && address!.isNotEmpty);
+  }
 
   bool _isStep2Valid() {
     return _titleController.text.isNotEmpty &&
@@ -211,44 +211,47 @@ String? selectedCategory;
     switch (promo) {
       case "TOP":
         return "TOP";
-      case "Exclusive (14 days)":
-        return "Exclusive";
-      case "Boost (30 days)":
-        return "Boost";
+      case "EXCLUSIVE (14 days)":
+        return "EXCLUSIVE";
+      case "BOOST (30 days)":
+        return "BOOST";
       default:
         return "NONE";
     }
   }
 
-Future<void> _saveAd(String userId, String promoType) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("token");
-    if (token == null) throw Exception("User not logged in");
+  Future<String> _saveAd(String userId, String promoType) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString("token");
+      if (token == null) throw Exception("User not logged in");
 
-    final adService = AdService(
-      baseUrl: "https://stictches-africa-api-local.vercel.app/api",
-      token: token,
-    );
+      final adService = AdService(
+        baseUrl: "https://stictches-africa-api-local.vercel.app/api",
+        token: token,
+      );
 
-    await adService.createAd(
-      categoryName: selectedCategory!, // ✅ single valid category
-      promoType: promoType,
-      title: _titleController.text,
-      brand: _userBrand ?? "UNKNOWN",
-      gender: _genderController.text,
-      description: _descriptionController.text,
-      price: double.tryParse(_priceController.text) ?? 0.0,
-      phone: _phoneController.text,
-      latitude: latitude != null ? double.parse(latitude!) : null,
-      longitude: longitude != null ? double.parse(longitude!) : null,
-      address: address,
-      images: _selectedImages,
-    );
-  } catch (e) {
-    throw Exception("Failed to save ad: $e");
+      final ad = await adService.createAd(
+        categoryName: selectedCategory!,
+        promoType: promoType,
+        title: _titleController.text,
+        brand: _userBrand ?? "UNKNOWN",
+        gender: _genderController.text,
+        description: _descriptionController.text,
+        price: double.tryParse(_priceController.text) ?? 0.0,
+        phone: _phoneController.text,
+        latitude: latitude != null ? double.parse(latitude!) : null,
+        longitude: longitude != null ? double.parse(longitude!) : null,
+        address: address,
+        images: _selectedImages,
+      );
+
+      return ad.id.toString(); // ✅ return adId
+    } catch (e) {
+      throw Exception("Failed to save ad: $e");
+    }
   }
-}
+
   Future<void> _nextStep() async {
     if (_currentStep == 0 && _isStep1Valid()) {
       setState(() => _currentStep = 1);
@@ -264,7 +267,6 @@ Future<void> _saveAd(String userId, String promoType) async {
         final userId = user.id;
         final email = user.email;
         final promoType = _mapPromoToEnum(_selectedPromo);
-
         if (promoType == "NONE") {
           await _saveAd(userId, promoType);
           if (!mounted) return;
@@ -276,22 +278,26 @@ Future<void> _saveAd(String userId, String promoType) async {
           final amount = paystackPlans[promoType];
           if (amount == null) throw Exception("Invalid plan selected");
 
+          // ✅ First create ad to get adId
+          final adId = await _saveAd(userId, promoType);
+          final reference =
+              "${userId}_${adId}_${promoType}_${DateTime.now().millisecondsSinceEpoch}";
+
           PayWithPayStack().now(
             context: context,
             secretKey: paystackPublicKey,
             customerEmail: email,
-            reference: DateTime.now().millisecondsSinceEpoch.toString(),
+            reference: reference,
             amount: amount.toDouble(),
             currency: "NGN",
             callbackUrl:
                 "https://stictches-africa-api-local.vercel.app/api/paystack/callback",
             transactionCompleted: (response) async {
               if (response.status == true) {
-                await _saveAd(userId, promoType);
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text("Payment successful, Ad posted!"),
+                    content: Text("Payment successful, Ad promoted!"),
                   ),
                 );
                 Navigator.pushNamed(context, "/home");
@@ -335,10 +341,7 @@ Future<void> _saveAd(String userId, String promoType) async {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.asset(
-                    "images/Stitches Africa Logo-06.png",
-                    height: 80,
-                  ),
+                  Image.asset("images/Stitches Africa Logo-06.png", height: 80),
                   const SizedBox(height: 20),
                   _currentStep == 0 ? _step1() : _step2(),
                 ],
@@ -367,115 +370,116 @@ Future<void> _saveAd(String userId, String promoType) async {
   }
 
   // --- Step 1 ---
- Widget _step1() {
-  return Column(
-    crossAxisAlignment: CrossAxisAlignment.center,
-    children: [
-      _label("Select Category*"),
-      if (isLoadingCategories)
-        const Center(child: CircularProgressIndicator())
-      else
-        ...categoryData.map((c) {
-          final category = c["categoryName"]?.toString() ?? "";
-          if (category.isEmpty) return const SizedBox.shrink();
-          return RadioListTile<String>(
-            title: Text(category),
-            value: category,
-            groupValue: selectedCategory,
-            onChanged: (val) {
-              setState(() {
-                selectedCategory = val;
-              });
-            },
-          );
-        }),
-      const SizedBox(height: 12),
-      TextField(
-        controller: locationController,
-        readOnly: false,
-        onChanged: _onLocationChanged,
-        decoration: InputDecoration(
-          labelText: "Your location",
-          border: const OutlineInputBorder(),
-          suffixIcon: _isGettingLocation
-              ? const Padding(
-                  padding: EdgeInsets.all(8.0),
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : IconButton(
-                  icon: const Icon(Icons.my_location),
-                  onPressed: _getUserLocation,
-                ),
-        ),
-      ),
-      const SizedBox(height: 16),
-      _label("Add Photos*"),
-      InkWell(
-        onTap: _pickImages,
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Row(
-            children: const [
-              Icon(Icons.image, color: Colors.grey),
-              SizedBox(width: 8),
-              Text("Tap to select images"),
-            ],
-          ),
-        ),
-      ),
-      const SizedBox(height: 8),
-      if (_selectedImages.isNotEmpty)
-        SizedBox(
-          height: 100,
-          child: ListView.separated(
-            scrollDirection: Axis.horizontal,
-            itemBuilder: (context, index) => Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.file(
-                    _selectedImages[index],
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
+  Widget _step1() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        _label("Select Category*"),
+        if (isLoadingCategories)
+          const Center(child: CircularProgressIndicator())
+        else
+          ...categoryData.map((c) {
+            final category = c["categoryName"]?.toString() ?? "";
+            if (category.isEmpty) return const SizedBox.shrink();
+            return RadioListTile<String>(
+              title: Text(category),
+              value: category,
+              groupValue: selectedCategory,
+              onChanged: (val) {
+                setState(() {
+                  selectedCategory = val;
+                });
+              },
+            );
+          }),
+        const SizedBox(height: 12),
+        TextField(
+          controller: locationController,
+          readOnly: false,
+          onChanged: _onLocationChanged,
+          decoration: InputDecoration(
+            labelText: "Your location",
+            border: const OutlineInputBorder(),
+            suffixIcon: _isGettingLocation
+                ? const Padding(
+                    padding: EdgeInsets.all(8.0),
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : IconButton(
+                    icon: const Icon(Icons.my_location),
+                    onPressed: _getUserLocation,
                   ),
-                ),
-                Positioned(
-                  right: 0,
-                  top: 0,
-                  child: GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        _selectedImages.removeAt(index);
-                      });
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: Colors.black54,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      padding: const EdgeInsets.all(2),
-                      child: const Icon(
-                        Icons.close,
-                        size: 18,
-                        color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _label("Add Photos*"),
+        InkWell(
+          onTap: _pickImages,
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: const [
+                Icon(Icons.image, color: Colors.grey),
+                SizedBox(width: 8),
+                Text("Tap to select images"),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (_selectedImages.isNotEmpty)
+          SizedBox(
+            height: 100,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemBuilder: (context, index) => Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: Image.file(
+                      _selectedImages[index],
+                      width: 100,
+                      height: 100,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    top: 0,
+                    child: GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedImages.removeAt(index);
+                        });
+                      },
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black54,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        padding: const EdgeInsets.all(2),
+                        child: const Icon(
+                          Icons.close,
+                          size: 18,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemCount: _selectedImages.length,
             ),
-            separatorBuilder: (_, __) => const SizedBox(width: 8),
-            itemCount: _selectedImages.length,
           ),
-        ),
-    ],
-  );
-}
+      ],
+    );
+  }
+
   // --- Step 2 ---
   Widget _step2() {
     return Column(
@@ -498,7 +502,9 @@ Future<void> _saveAd(String userId, String promoType) async {
             setState(() {
               _selectedState = val;
               _selectedArea = null;
-              areaList = val != null ? NigerianStatesAndLGA.getStateLGAs(val) : [];
+              areaList = val != null
+                  ? NigerianStatesAndLGA.getStateLGAs(val)
+                  : [];
             });
           },
         ),
@@ -536,9 +542,9 @@ Future<void> _saveAd(String userId, String promoType) async {
         const SizedBox(height: 10),
         _promoCard("TOP", "₦ 11,999", subtitle: "7 days"),
         const SizedBox(height: 10),
-        _promoCard("Exclusive (14 days)", "₦ 19,999"),
+        _promoCard("EXCLUSIVE (14 days)", "₦ 19,999"),
         const SizedBox(height: 10),
-        _promoCard("Boost (30 days)", "₦ 29,999"),
+        _promoCard("BOOST (30 days)", "₦ 29,999"),
       ],
     );
   }

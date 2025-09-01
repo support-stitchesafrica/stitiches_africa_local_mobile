@@ -48,60 +48,61 @@ class AdService {
   }
 
   /// Create ad
- Future<Ad> createAd({
-  required String categoryName,
-  String? promoType,
-  required String title,
-  required String brand,
-  String? gender,
-  required String description,
-  required double price,
-  required String phone,
-  double? latitude,
-  double? longitude,
-  String? address,
-  required List<File> images,
-}) async {
-  if (token == null) throw Exception("User not logged in");
+  Future<Ad> createAd({
+    required String categoryName,
+    String? promoType,
+    required String title,
+    required String brand,
+    String? gender,
+    required String description,
+    required double price,
+    required String phone,
+    double? latitude,
+    double? longitude,
+    String? address,
+    required List<File> images,
+  }) async {
+    if (token == null) throw Exception("User not logged in");
 
-  var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/sell"));
-  request.headers['Authorization'] = 'Bearer $token';
+    var request = http.MultipartRequest("POST", Uri.parse("$baseUrl/sell"));
+    request.headers['Authorization'] = 'Bearer $token';
+    request.headers['Accept'] = 'application/json'; // ✅ ensure JSON response
 
-  // Add fields
-  request.fields.addAll({
-    "categoryName": categoryName,
-    if (promoType != null) "promoType": promoType,
-    "title": title,
-    "brand": brand,
-    if (gender != null) "gender": gender,
-    "description": description,
-    "price": price.toString(),
-    "phone": phone,
-    if (latitude != null) "latitude": latitude.toString(),
-    if (longitude != null) "longitude": longitude.toString(),
-    if (address != null) "address": address,
-  });
+    // Fields
+    request.fields.addAll({
+      "categoryName": categoryName,
+      if (promoType != null) "promoType": promoType,
+      "title": title,
+      "brand": brand,
+      if (gender != null) "gender": gender,
+      "description": description,
+      "price": price.toString(),
+      "phone": phone,
+      if (latitude != null) "latitude": latitude.toString(),
+      if (longitude != null) "longitude": longitude.toString(),
+      if (address != null) "address": address,
+    });
 
-  // Add images
-  for (var file in images) {
-    final mimeType = lookupMimeType(file.path) ?? 'application/octet-stream';
-    request.files.add(await http.MultipartFile.fromPath(
-      'images',
-      file.path,
-      contentType: MediaType.parse(mimeType),
-    ));
+    // Images
+    for (var file in images) {
+      final mimeType = lookupMimeType(file.path) ?? 'application/octet-stream';
+      request.files.add(await http.MultipartFile.fromPath(
+        'images',
+        file.path,
+        contentType: MediaType.parse(mimeType),
+      ));
+    }
+
+    final streamedResponse = await request.send();
+    final res = await http.Response.fromStream(streamedResponse);
+
+    if (res.statusCode == 201) {
+      return Ad.fromJson(jsonDecode(res.body));
+    } else {
+      print("❌ CreateAd failed: ${res.statusCode} ${res.body}");
+      throw Exception("Failed to create ad: ${res.statusCode} ${res.body}");
+    }
   }
-
-  final streamedResponse = await request.send();
-  final res = await http.Response.fromStream(streamedResponse);
-
-  if (res.statusCode == 201) {
-    return Ad.fromJson(jsonDecode(res.body));
-  } else {
-    print(res.body);
-    throw Exception("Failed to create ad: ${res.statusCode} ${res.body}");
-  }
-}
 
   /// Update ad
   Future<Ad> updateAd(String id, Map<String, dynamic> data, {List<File>? images}) async {
@@ -109,6 +110,7 @@ class AdService {
 
     var request = http.MultipartRequest("PUT", Uri.parse("$baseUrl/ads/$id"));
     request.headers['Authorization'] = 'Bearer $token';
+    request.headers['Accept'] = 'application/json';
 
     data.forEach((key, value) {
       if (value != null) request.fields[key] = value.toString();
@@ -142,10 +144,8 @@ class AdService {
     }
   }
 
- 
-
-  /// Get ads by location (no radius)
- Future<List<Ad>> getAdsByLocation(double latitude, double longitude, {double radius = 20}) async {
+  /// Get ads by location
+  Future<List<Ad>> getAdsByLocation(double latitude, double longitude, {double radius = 20}) async {
     final response = await http.get(
       Uri.parse('$baseUrl/sell/location?latitude=$latitude&longitude=$longitude&radius=$radius'),
       headers: headers,

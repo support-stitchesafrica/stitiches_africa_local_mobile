@@ -239,7 +239,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             brandName: brandName!,
             phone: phone!,
             bvn: _bvnController.text.trim(),
-            logo: _logoFile?.path, // ✅ path will be uploaded in AuthService
+            image: _logoFile?.path, // ✅ path will be uploaded in AuthService
             latitude: latitude != null ? double.parse(latitude!) : null,
             longitude: longitude != null ? double.parse(longitude!) : null,
             address: address,
