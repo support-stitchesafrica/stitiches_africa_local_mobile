@@ -293,7 +293,7 @@ class _SellFormScreenState extends State<SellFormScreen> {
             callbackUrl:
                 "https://stictches-africa-api-local.vercel.app/api/paystack/callback",
             transactionCompleted: (response) async {
-              if (response.status == true) {
+              if (response.status == "success") {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
