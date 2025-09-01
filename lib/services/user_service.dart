@@ -53,13 +53,24 @@ class UserService {
     final token = await _getToken();
     if (token == null) return null;
 
+    // First get the current user to get the ID
+    final currentUser = await getProfile();
+    if (currentUser == null) {
+      throw Exception("Failed to get current user profile");
+    }
+
+    print('Current user ID: ${currentUser.id}');
+
+    // Add the user ID to the profile data
+    final dataWithId = {...profileData, 'id': currentUser.id};
+
     final response = await http.put(
       Uri.parse("$baseUrl/users/profile"),
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
       },
-      body: json.encode(profileData),
+      body: json.encode(dataWithId),
     );
 
     if (response.statusCode == 200) {

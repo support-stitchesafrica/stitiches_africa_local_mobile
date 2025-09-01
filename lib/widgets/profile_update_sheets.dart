@@ -331,16 +331,7 @@ class ProfileUpdateSheets {
                             imageQuality: 80,
                           );
                           if (image != null) {
-                            // TODO: Upload image to server and get URL
-                            // For now, we'll just show a success message
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Image selected! Upload functionality coming soon.',
-                                ),
-                              ),
-                            );
+                            await _handleImageUpload(context, image, onUpdate);
                           }
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -368,15 +359,7 @@ class ProfileUpdateSheets {
                             imageQuality: 80,
                           );
                           if (image != null) {
-                            // TODO: Upload image to server and get URL
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Image captured! Upload functionality coming soon.',
-                                ),
-                              ),
-                            );
+                            await _handleImageUpload(context, image, onUpdate);
                           }
                         } catch (e) {
                           ScaffoldMessenger.of(context).showSnackBar(
@@ -392,7 +375,7 @@ class ProfileUpdateSheets {
                   ),
                 ],
               ),
-              if (currentImage != null) ...[
+              if (currentImage != null && currentImage.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
@@ -431,6 +414,52 @@ class ProfileUpdateSheets {
         ),
       ),
     );
+  }
+
+  // Helper method to handle image upload and profile update
+  static Future<void> _handleImageUpload(
+    BuildContext context,
+    XFile imageFile,
+    Function(User) onUpdate,
+  ) async {
+    // Show loading dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // Pass the file path directly to updateProfile
+      // The backend will handle the file upload and conversion to URL
+      final updatedUser = await _userService.updateProfile({
+        'image': imageFile.path,
+      });
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      if (updatedUser != null) {
+        // Update the UI and close the bottom sheet
+        onUpdate(updatedUser);
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profile image updated successfully!')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update profile with new image'),
+          ),
+        );
+      }
+    } catch (e) {
+      // Close loading dialog
+      Navigator.pop(context);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to upload image: $e')));
+    }
   }
 
   // Update Personal Info Bottom Sheet (DOB and Gender)

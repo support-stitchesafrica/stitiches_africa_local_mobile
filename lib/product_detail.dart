@@ -33,6 +33,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   bool _isLoadingFavorite = false;
   bool _loadingFeedback = false;
   late final AdService _adService;
+  Set<String> _favouriteIds = {};
 
   late final AdFeedbackService _feedbackService;
   late final UserService _userService;
@@ -59,6 +60,7 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     _loadStoredFeedback();
     _loadUserAndFeedback();
+    _loadFavoriteAds();
   }
 
   @override
@@ -187,9 +189,36 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
   }
 
   // ---------------- Favorite functionality ----------------
+  Future<void> _loadFavoriteAds() async {
+    if (Prefs.token == null) return;
+
+    try {
+      final favoriteAdsData = await _adService.getFavouriteAds();
+      final favoriteIds = favoriteAdsData
+          .map((favoriteData) => favoriteData['adId'] as String)
+          .toSet();
+
+      if (mounted) {
+        setState(() {
+          _favouriteIds = favoriteIds;
+        });
+      }
+    } catch (e) {
+      print("Error loading favorite ads: $e");
+    }
+  }
+
+  bool _isFavourited(String adId) => _favouriteIds.contains(adId);
+
   Future<void> _addToFavorites() async {
     if (Prefs.token == null) {
       _toast(context, "Please login to add favorites");
+      return;
+    }
+
+    // Check if already favorited
+    if (_isFavourited(widget.ad.id)) {
+      _toast(context, "Remove from favorites not yet supported.");
       return;
     }
 
@@ -197,13 +226,20 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
 
     try {
       await _adService.addFavouriteAd(widget.ad.id);
+
+      // Optimistically add to favorites
+      if (mounted) {
+        setState(() {
+          _favouriteIds.add(widget.ad.id);
+          _isLoadingFavorite = false;
+        });
+      }
       _toast(context, "Added to favorites!");
     } catch (e) {
-      _toast(context, "Error: ${e.toString()}");
-    } finally {
       if (mounted) {
         setState(() => _isLoadingFavorite = false);
       }
+      _toast(context, "Error: ${e.toString()}");
     }
   }
 
@@ -291,7 +327,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                       ),
                     )
-                  : const Icon(Icons.favorite_border, color: Colors.white),
+                  : Icon(
+                      _isFavourited(widget.ad.id)
+                          ? Icons.favorite
+                          : Icons.favorite_border,
+                      color: Colors.white,
+                    ),
             )
           : null,
       body: CustomScrollView(
@@ -316,7 +357,12 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                         height: 20,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.favorite_border, color: Colors.black),
+                    : Icon(
+                        _isFavourited(widget.ad.id)
+                            ? Icons.favorite
+                            : Icons.favorite_border,
+                        color: Colors.black,
+                      ),
               ),
             ],
             flexibleSpace: FlexibleSpaceBar(

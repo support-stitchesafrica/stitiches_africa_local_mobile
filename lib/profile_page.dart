@@ -45,6 +45,7 @@ class _ProfilePageState extends State<ProfilePage> {
         final user = await _userService.getProfile();
         if (kDebugMode) {
           print('API user data loaded successfully: ${user?.fullName}');
+          print('API user image: ${user?.image}');
         }
         if (user != null) {
           setState(() {
@@ -102,6 +103,9 @@ class _ProfilePageState extends State<ProfilePage> {
       _user = updatedUser;
     });
     await Prefs.setUserData(updatedUser.toJson());
+
+    // Reload the profile to get the latest data including image URL
+    await _loadUserProfile();
   }
 
   void showSignInSheet(BuildContext context) {
@@ -210,14 +214,14 @@ class _ProfilePageState extends State<ProfilePage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-           Center(
-            child: Image.asset(
-              "images/Stitches Africa Logo-06.png", // ✅ your logo
-              height: 120, // adjust size if needed
-            ),
-          ),
-          const SizedBox(height: 16),
-          const Text('Loading profile...'),
+              Center(
+                child: Image.asset(
+                  "images/Stitches Africa Logo-06.png", // ✅ your logo
+                  height: 120, // adjust size if needed
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Loading profile...'),
             ],
           ),
         ),
