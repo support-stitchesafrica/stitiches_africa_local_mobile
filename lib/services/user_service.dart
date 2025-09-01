@@ -20,7 +20,7 @@ class UserService {
     if (token == null) return null;
 
     final response = await http.get(
-      Uri.parse("$baseUrl/user/profile"),
+      Uri.parse("$baseUrl/users/profile"),
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
@@ -54,7 +54,7 @@ class UserService {
     if (token == null) return null;
 
     final response = await http.put(
-      Uri.parse("$baseUrl/user/profile"),
+      Uri.parse("$baseUrl/users/profile"),
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
@@ -77,7 +77,7 @@ class UserService {
     if (token == null) return null;
 
     final response = await http.put(
-      Uri.parse("$baseUrl/user/profile/location"),
+      Uri.parse("$baseUrl/users/profile/location"),
       headers: {
         "Authorization": "Bearer $token",
         "Content-Type": "application/json",
@@ -99,7 +99,7 @@ class UserService {
     if (token == null) return [];
 
     final response = await http.get(
-      Uri.parse("$baseUrl/user/my-ads"),
+      Uri.parse("$baseUrl/users/my-ads"),
       headers: {"Authorization": "Bearer $token"},
     );
 
@@ -116,7 +116,7 @@ class UserService {
     final token = await _getToken();
     if (token != null) {
       await http.post(
-        Uri.parse("$baseUrl/user/logout"),
+        Uri.parse("$baseUrl/users/logout"),
         headers: {"Authorization": "Bearer $token"},
       );
     }
