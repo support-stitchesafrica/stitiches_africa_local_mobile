@@ -62,7 +62,7 @@ class AuthService {
     required String password,
     required String brandName,
     required String phone,
-    String? logo, // optional, backend expects uploaded file
+    String? image, // optional, backend expects uploaded file
     double? latitude,
     double? longitude,
     String? bvn,
@@ -82,7 +82,7 @@ class AuthService {
     };
 
     // Add optional fields only if they're not null
-    if (logo != null) requestBody["logo"] = logo;
+    if (image != null) requestBody["image"] = image;
     if (latitude != null) requestBody["latitude"] = latitude;
     if (longitude != null) requestBody["longitude"] = longitude;
     if (bvn != null) requestBody["bvn"] = bvn;
