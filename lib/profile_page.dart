@@ -411,14 +411,18 @@ class _ProfilePageState extends State<ProfilePage> {
                   showTrailing: false,
                 ),
                 const Divider(),
-                _accountSettingItem(
-                  leadingIcon: Icons.campaign_outlined,
-                  title: "My Ads Placements",
-                  onTap: () {
-                    // TODO: Navigate to my ads screen
-                  },
-                  showTrailing: false,
-                ),
+                if (_user!.userType == "VENDOR") ...[
+                  _accountSettingItem(
+                    leadingIcon: Icons.campaign_outlined,
+                    title: "My Ads Placements",
+                    onTap: () {
+                      // TODO: Navigate to my ads screen
+                    },
+                    showTrailing: false,
+                  ),
+                  const Divider(),
+                ],
+
                 const Divider(),
                 _accountSettingItem(
                   leadingIcon: Icons.logout,

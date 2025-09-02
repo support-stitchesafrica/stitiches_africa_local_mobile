@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:carousel_slider/carousel_slider.dart' as cs;
 
 import 'models/ad.dart';
 import 'services/ad_service.dart';
@@ -428,6 +429,12 @@ Future<void> _enterLocationManually() async {
         .toList();
   }
 
+ 
+
+  /// ✅ FILTER promo ads
+  List<Ad> get promoAds =>
+      allAds.where((ad) => ad.promoType != null && ad.promoType != "NONE").toList();
+
   @override
   Widget build(BuildContext context) {
     final busy = _isLoading || _locBusy;
@@ -646,6 +653,105 @@ Future<void> _enterLocationManually() async {
                     ),
 
                     const SliverToBoxAdapter(child: SizedBox(height: 12)),
+
+                    if (promoAds.isNotEmpty)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          child: cs.CarouselSlider(
+                            options: cs.CarouselOptions(
+                              autoPlay: true,
+                              enlargeCenterPage: true,
+                              viewportFraction: 0.9,
+                              aspectRatio: 16 / 6,
+                            ),
+                            items: promoAds.map((ad) {
+                              return Builder(
+                                builder: (context) {
+                                  return GestureDetector(
+                                    onTap: () {
+                                      final ads = _adsForStore(ad.brand);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => ShopListingsPage(
+                                            storeName: ad.brand,
+                                            ads: uniqueAdsByTitleAndImages(ads),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: Colors.red,
+                                        borderRadius: BorderRadius.circular(12),
+                                        image: ad.images.isNotEmpty
+                                            ? DecorationImage(
+                                                image: NetworkImage(ad.images.first),
+                                                fit: BoxFit.cover,
+                                                colorFilter: ColorFilter.mode(
+                                                  Colors.black.withOpacity(0.3),
+                                                  BlendMode.darken,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                      child: Stack(
+                                        children: [
+                                          Positioned(
+                                            left: 16,
+                                            top: 16,
+                                            child: Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              children: [
+                                                const Text(
+                                                  "Save Big on Your Favorites",
+                                                  style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 16,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  ad.title,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 13,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          if (ad.promoType != null)
+                                            Positioned(
+                                              bottom: 16,
+                                              right: 16,
+                                              child: Container(
+                                                padding: const EdgeInsets.all(6),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.black87,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  ad.promoType!,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              );
+                            }).toList(),
+                          ),
+                        ),
+                      ),
 
                     // NEARBY STORES HEADER
                     const SliverToBoxAdapter(
