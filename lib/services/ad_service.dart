@@ -145,7 +145,7 @@ class AdService {
   }
 
   /// Get ads by location
-  Future<List<Ad>> getAdsByLocation(double latitude, double longitude, {double radius = 20}) async {
+  Future<List<Ad>> getAdsByLocation(double latitude, double longitude, {double radius = 10}) async {
     final response = await http.get(
       Uri.parse('$baseUrl/sell/location?latitude=$latitude&longitude=$longitude&radius=$radius'),
       headers: headers,
@@ -160,7 +160,7 @@ class AdService {
   }
 
   /// Get brands by location
-  Future<List<Map<String, dynamic>>> getBrandsByLocation(double lat, double lng, {double radius = 5}) async {
+  Future<List<Map<String, dynamic>>> getBrandsByLocation(double lat, double lng, {double radius = 10}) async {
     final res = await http.get(
       Uri.parse("$baseUrl/sell/brands/location?latitude=$lat&longitude=$lng&radius=$radius"),
       headers: headers,
@@ -173,7 +173,7 @@ class AdService {
   }
 
   /// Get listings by brand
-  Future<List<Ad>> getListingsByBrand(String brand, double lat, double lng, {double radius = 5}) async {
+  Future<List<Ad>> getListingsByBrand(String brand, double lat, double lng, {double radius = 10}) async {
     final res = await http.get(
       Uri.parse("$baseUrl/sell/brands/$brand/location?latitude=$lat&longitude=$lng&radius=$radius"),
       headers: headers,
