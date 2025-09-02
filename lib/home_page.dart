@@ -719,7 +719,7 @@ class _HomePageState extends State<HomePage> {
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               SizedBox(
-                                                width: 160,
+                                              //  width: 160,
                                                 child: Text(
                                                   ad.title,
                                                   maxLines: 2,
