@@ -46,11 +46,11 @@ class _LoginScreenState extends State<LoginScreen> {
         // ✅ Save to local storage
         final prefs = await SharedPreferences.getInstance();
         // Convert the map to a User object
-  final userMap = authController.user as Map<String, dynamic>;
-  final user = User.fromJson(userMap);
+        final userMap = authController.user as Map<String, dynamic>;
+        final user = User.fromJson(userMap);
 
-  await prefs.setString("token", authController.token!);
-  await prefs.setString("user", jsonEncode(user.toJson()));
+        await prefs.setString("token", authController.token!);
+        await prefs.setString("user", jsonEncode(user.toJson()));
 
         // You can also save user data if returned from API
         // await prefs.setString("user", jsonEncode(authController.user));
@@ -59,10 +59,7 @@ class _LoginScreenState extends State<LoginScreen> {
           context,
         ).showSnackBar(const SnackBar(content: Text("Login successful")));
 
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => const FashionPage()),
-        );
+        Navigator.pushReplacementNamed(context, "/home");
       } else if (authController.error != null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Login failed: ${authController.error!}")),
