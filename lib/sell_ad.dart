@@ -253,86 +253,99 @@ class _SellFormScreenState extends State<SellFormScreen> {
     }
   }
 
-Future<void> _nextStep() async {
-  if (_currentStep == 0 && _isStep1Valid()) {
-    setState(() => _currentStep = 1);
-  } else if (_currentStep == 1 && _isStep2Valid()) {
-    try {
-      final prefs = await SharedPreferences.getInstance();
-      final userJson = prefs.getString("user");
-      if (userJson == null) throw Exception("No logged in user found");
+  Future<void> _nextStep() async {
+    if (_currentStep == 0 && _isStep1Valid()) {
+      setState(() => _currentStep = 1);
+    } else if (_currentStep == 1 && _isStep2Valid()) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        final userJson = prefs.getString("user");
+        if (userJson == null) throw Exception("No logged in user found");
 
-      final userMap = jsonDecode(userJson) as Map<String, dynamic>;
-      final user = User.fromJson(userMap);
+        final userMap = jsonDecode(userJson) as Map<String, dynamic>;
+        final user = User.fromJson(userMap);
 
-      final userId = user.id;
-      final email = user.email;
-      final promoType = _mapPromoToEnum(_selectedPromo);
+        final userId = user.id;
+        final email = user.email;
+        final promoType = _mapPromoToEnum(_selectedPromo);
 
-      if (promoType == "NONE") {
-        await _saveAd(userId, promoType);
-        if (!mounted) return;
+        if (promoType == "NONE") {
+          await _saveAd(userId, promoType);
+          if (!mounted) return;
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Ad posted successfully! Redirecting...")),
-        );
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("Ad posted successfully! Redirecting..."),
+            ),
+          );
 
-        await Future.delayed(const Duration(seconds: 2));
-        if (!mounted) return;
-        Navigator.pushNamedAndRemoveUntil(context, "/home", (_) => false);
-      } else {
-        final amount = paystackPlans[promoType];
-        if (amount == null) throw Exception("Invalid plan selected");
+          await Future.delayed(const Duration(seconds: 2));
+          if (!mounted) return;
+          Navigator.pushNamedAndRemoveUntil(context, "/home", (_) => false);
+        } else {
+          final amount = paystackPlans[promoType];
+          if (amount == null) throw Exception("Invalid plan selected");
 
-        // ✅ First create ad to get adId
-        final adId = await _saveAd(userId, promoType);
-        final reference =
-            "${userId}_${adId}_${promoType}_${DateTime.now().millisecondsSinceEpoch}";
+          // ✅ First create ad to get adId
+          final adId = await _saveAd(userId, promoType);
+          final reference =
+              "${userId}_${adId}_${promoType}_${DateTime.now().millisecondsSinceEpoch}";
 
-        PayWithPayStack().now(
-          context: context,
-          secretKey: paystackPublicKey,
-          customerEmail: email,
-          reference: reference,
-          amount: amount.toDouble(),
-          currency: "NGN",
-          callbackUrl:
-              "https://stictches-africa-api-local.vercel.app/api/paystack/callback",
-          transactionCompleted: (response) async {
-            debugPrint("✅ Payment Success: ${response.toString()}");
-            if (!mounted) return;
+          PayWithPayStack().now(
+            context: context,
+            secretKey: paystackPublicKey,
+            customerEmail: email,
+            reference: reference,
+            amount: amount.toDouble(),
+            currency: "NGN",
+            callbackUrl:
+                "https://stictches-africa-api-local.vercel.app/api/paystack/callback",
+            transactionCompleted: (response) async {
+              debugPrint("✅ Payment Success: ${response.toString()}");
+              if (!mounted) return;
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Payment successful! Redirecting...")),
-            );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Payment successful! Redirecting..."),
+                ),
+              );
 
-            await Future.delayed(const Duration(seconds: 2));
-            if (!mounted) return;
-            Navigator.pushNamedAndRemoveUntil(context, "/payment-success", (_) => false);
-          },
-          transactionNotCompleted: (error) {
-            debugPrint("❌ Payment Failed: $error");
-            if (!mounted) return;
+              await Future.delayed(const Duration(seconds: 2));
+              if (!mounted) return;
+              Navigator.pushNamedAndRemoveUntil(
+                context,
+                "/payment-success",
+                (_) => false,
+              );
+            },
+            transactionNotCompleted: (error) {
+              debugPrint("❌ Payment Failed: $error");
+              if (!mounted) return;
 
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Payment failed or cancelled")),
-            );
-          },
-        );
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Payment failed or cancelled")),
+              );
+            },
+          );
+        }
+      } catch (e) {
+        debugPrint("🔥 Error in _nextStep: $e");
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
       }
-    } catch (e) {
-      debugPrint("🔥 Error in _nextStep: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
     }
   }
-}
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          onPressed: () => Navigator.pop(context),
+          color: Colors.white,
+          icon: const Icon(Icons.arrow_back),
+        ),
         title: const Text("Post Ad", style: TextStyle(color: Colors.white)),
         backgroundColor: Colors.black,
         centerTitle: true,
