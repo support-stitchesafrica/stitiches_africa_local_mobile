@@ -19,6 +19,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   int _currentStep = 0;
 
   File? _logoFile;
+  String? imagePath; // ✅ FIX - persist image path separately
 
   // Categories
   List<Map<String, dynamic>> categoryData = [];
@@ -54,7 +55,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   @override
   void initState() {
     super.initState();
-    _currentStep = 0; 
+    _currentStep = 0;
     _fetchCategories();
   }
 
@@ -148,7 +149,10 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
   void _pickLogo() async {
     final picked = await ImagePicker().pickImage(source: ImageSource.gallery);
     if (picked != null) {
-      setState(() => _logoFile = File(picked.path));
+      setState(() {
+        _logoFile = File(picked.path);
+        imagePath = picked.path; // ✅ FIX - save image path
+      });
     }
   }
 
@@ -188,7 +192,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
 
   void _nextStep(AuthController controller) async {
     if (_currentStep == 0) {
-      if (_logoFile == null) {
+      if (_logoFile == null || imagePath == null) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(const SnackBar(content: Text("Please upload a logo")));
@@ -236,10 +240,10 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
             fullName: fullName!,
             email: email!,
             password: password!,
-            brandName: brandName!,
+            brandName: brandName!, // ✅ FIX - always assigned now
             phone: phone!,
             bvn: _bvnController.text.trim(),
-            image: _logoFile?.path, // ✅ path will be uploaded in AuthService
+            image: imagePath, // ✅ FIX - use persisted path
             latitude: latitude != null ? double.parse(latitude!) : null,
             longitude: longitude != null ? double.parse(longitude!) : null,
             address: address,
@@ -290,6 +294,7 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
               controller: _brandNameController,
               decoration: const InputDecoration(labelText: "Brand Name"),
               validator: (val) => val!.isEmpty ? "Enter your brand name" : null,
+              onChanged: (val) => brandName = val, // ✅ FIX - keep in sync
             ),
           ),
         ],
@@ -456,7 +461,6 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
                     child: Column(
                       children: [
                         Text("Using BVN Email: $bvnEmail"),
-                        Text("Email will be set to: $bvnEmail"),
                       ],
                     ),
                   ),
@@ -559,11 +563,11 @@ class _VendorRegisterScreenState extends State<VendorRegisterScreen> {
               child: controller.isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _currentStep < steps.length
-                  ? SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.7,
-                      child: steps[_currentStep],
-                    )
-                  : const Center(child: Text("Invalid step")),
+                      ? SizedBox(
+                          height: MediaQuery.of(context).size.height * 0.7,
+                          child: steps[_currentStep],
+                        )
+                      : const Center(child: Text("Invalid step")),
             ),
             bottomNavigationBar: Padding(
               padding: const EdgeInsets.all(20.0),

@@ -84,30 +84,31 @@ class Ad {
   });
 
   factory Ad.fromJson(Map<String, dynamic> json) => Ad(
-    id: json['id'],
-    userId: json['userId'],
-    categoryName: json['categoryName'],
-    images: List<String>.from(json['images'] ?? []),
-    title: json['title'],
-    brand: json['brand'],
-    gender: json['gender'],
-    description: json['description'],
-    price: (json['price'] as num).toDouble(),
-    phone: json['phone'],
-    latitude: json['latitude'] != null
-        ? (json['latitude'] as num).toDouble()
-        : null,
-    longitude: json['longitude'] != null
-        ? (json['longitude'] as num).toDouble()
-        : null,
-    address: json['address'],
-    promoType: json['promoType'],
-    createdAt: DateTime.parse(json['createdAt']),
-    user: json['user'] != null ? User.fromJson(json['user']) : null,
-    category: json['category'] != null
-        ? Category.fromJson(json['category'])
-        : null,
-  );
+  id: json['id'],
+  userId: json['userId'],
+  categoryName: json['categoryName'],
+  images: List<String>.from(json['images'] ?? []),
+  title: json['title'],
+  brand: json['brand'],
+  gender: json['gender'],
+  description: json['description'],
+  price: (json['price'] as num).toDouble(),
+  phone: json['phone'],
+  latitude: json['latitude'] != null
+      ? (json['latitude'] as num).toDouble()
+      : null,
+  longitude: json['longitude'] != null
+      ? (json['longitude'] as num).toDouble()
+      : null,
+  address: json['address'],
+  promoType: json['promoType'],
+  createdAt: DateTime.parse(json['createdAt']),
+  user: json['user'] != null ? User.fromJson(json['user']) : null,
+  category: json['category'] != null
+      ? Category.fromJson(json['category'])
+      : null,
+);
+
 
   Map<String, dynamic> toJson() => {
     "id": id,

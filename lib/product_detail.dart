@@ -470,17 +470,8 @@ class _ProductDetailPageState extends State<ProductDetailPage> {
                       if ((ad.gender ?? '').isNotEmpty)
                         _MetaPill(icon: Icons.wc, text: ad.gender!),
                       if ((ad.address ?? '').isNotEmpty)
-                        _MetaPill(icon: Icons.location_on, text: ad.address!),
-                      if (ad.latitude != null && ad.longitude != null)
-                        _MetaPill(
-                          icon: Icons.place,
-                          text:
-                              "(${ad.latitude!.toStringAsFixed(4)}, ${ad.longitude!.toStringAsFixed(4)})",
-                        ),
-                      _MetaPill(
-                        icon: Icons.calendar_today,
-                        text: _formatDate(ad.createdAt),
-                      ),
+                        _MetaPill(icon: Icons.location_on, text: ad.address!,) ,
+                      
                       if (ad.user?.name != null && ad.user!.name.isNotEmpty)
                         _MetaPill(
                           icon: Icons.person,
@@ -725,7 +716,14 @@ class _MetaPill extends StatelessWidget {
         children: [
           Icon(icon, size: 16, color: Colors.black87),
           const SizedBox(width: 6),
-          Text(text),
+         Flexible(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: const TextStyle(fontSize: 12, color: Colors.black),
+            ),
+          ),
         ],
       ),
     );
